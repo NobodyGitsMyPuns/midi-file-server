@@ -16,11 +16,11 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v3
         with:
-          go-version: 1.21.1  # Try using an earlier, stable version
+          go-version: 1.23.0  
 
       - name: Install golangci-lint
         run: |
-            wget https://github.com/golangci/golangci-lint/releases/download/v1.52.2/golangci-lint-1.60.3-linux-amd64.tar.gz
+            wget https://github.com/golangci/golangci-lint/releases/download/v1.60.3/golangci-lint-1.60.3-linux-amd64.tar.gz
             tar xzf golangci-lint-1.60.3-linux-amd64.tar.gz
             sudo cp golangci-lint-1.60.3-linux-amd64/golangci-lint /usr/local/bin/
       - name: Run Makefile lint
