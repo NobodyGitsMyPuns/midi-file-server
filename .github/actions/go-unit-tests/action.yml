@@ -1,0 +1,11 @@
+name: Run Golang Unit Tests
+description: Execute project unit tests
+runs:
+  using: "composite"
+  steps:
+    - uses: actions/setup-go@v2
+      with:
+        go-version: "1.23.10"
+
+    - shell: bash
+      run: make test
