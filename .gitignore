@@ -24,3 +24,4 @@ go.work.sum
 # env file
 .env
 __debug_bin1708709200
+gothic_key.json
