@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"os"
 	"strings"
 	"testing"
 
@@ -49,7 +50,7 @@ func TestUploadListDelete(t *testing.T) {
 	t.Run("Upload File", func(t *testing.T) {
 		url := fmt.Sprintf("http://%s/upload?filename=%s", esp32IP, filename)
 
-		fileData, err := ioutil.ReadFile(filePath)
+		fileData, err := os.ReadFile(filePath)
 		if err != nil {
 			t.Fatalf("Failed to read file: %v", err)
 		}
