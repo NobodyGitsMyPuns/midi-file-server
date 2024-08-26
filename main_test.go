@@ -22,6 +22,8 @@ func TestGetBucketLs(t *testing.T) {
 
 }
 
+// todo set timeout on test workflow and lint workflow so it doesn't run forever if something goes wrong
+
 // func TestInitGCP(t *testing.T) {
 // 	_, err := InitGCPWithServiceAccount(GCP_project, "/Users/jesselopez/Documents/repos/midi-file-server/gothic_key.json")
 // 	require.NoError(t, err)
