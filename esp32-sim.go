@@ -18,7 +18,10 @@ func ConnectToESP32(ip, message string) error {
 	fmt.Printf("Connected to ESP32 at %s\n", ip)
 
 	// Send the message to the ESP32
-	_, err = fmt.Fprintf(conn, message+"\n")
+	_, err = fmt.Fprintf(
+		conn,
+		message+"\n",
+	)
 	if err != nil {
 		return fmt.Errorf("failed to send message: %v", err)
 	}

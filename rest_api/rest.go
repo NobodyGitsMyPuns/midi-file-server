@@ -41,7 +41,11 @@ func OnHealthSubmit(ctx context.Context, w http.ResponseWriter, r *http.Request)
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	dataF := HealthCheckResponse{Health: "OK"}
-	json.NewEncoder(w).Encode(dataF)
+	err := json.NewEncoder(w).Encode(dataF)
+	if err != nil {
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
 }
 
 func RegisterUser(ctx context.Context, w http.ResponseWriter, r *http.Request) {
@@ -94,7 +98,11 @@ func RegisterUser(ctx context.Context, w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.WriteHeader(http.StatusCreated)
-	json.NewEncoder(w).Encode(map[string]string{"message": "User registered successfully"})
+	err = json.NewEncoder(w).Encode(map[string]string{"message": "User registered successfully"})
+	if err != nil {
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+	}
+
 }
 
 func LoginUser(ctx context.Context, w http.ResponseWriter, r *http.Request) {
@@ -135,7 +143,11 @@ func LoginUser(ctx context.Context, w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(map[string]string{"token": tokenString})
+	err = json.NewEncoder(w).Encode(map[string]string{"token": tokenString})
+	if err != nil {
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+	}
+
 }
 
 func DownloadMIDI(ctx context.Context, w http.ResponseWriter, r *http.Request) {
