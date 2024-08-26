@@ -15,3 +15,13 @@ gsutil ls -r gs://YOUR_BUCKET_NAME
 
 
 brew install vault
+
+docker run -d -p 27017:27017 --name mongodb mongo:latest
+
+
+## mongodb
+brew install mongosh
+mongosh   
+use testdb
+show collections
+db.users.find().pretty()

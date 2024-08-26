@@ -21,10 +21,17 @@ var (
 	VqaEp      = "vqa"
 	ValidateEp = "validate"
 	VersionEp  = "v1"
+	RegisterEp = "register"
+	LoginEp    = "login"
+	DownloadEp = "download"
 )
 
 func main() {
 	healthEp := fmt.Sprintf("/%s/%s", VersionEp, HealthEp)
+	registerEp := fmt.Sprintf("/%s/%s", VersionEp, RegisterEp)
+	loginEp := fmt.Sprintf("/%s/%s", VersionEp, LoginEp)
+	downloadEp := fmt.Sprintf("/%s/%s", VersionEp, DownloadEp)
+
 	fmt.Printf("Starting server on http://localhost:8080%s\n", healthEp)
 
 	http.HandleFunc(healthEp, func(w http.ResponseWriter, r *http.Request) {
@@ -33,12 +40,30 @@ func main() {
 		restapi.OnHealthSubmit(timedContext, w, r)
 	})
 
+	http.HandleFunc(registerEp, func(w http.ResponseWriter, r *http.Request) {
+		timedContext, cancel := context.WithTimeout(r.Context(), 5*time.Second)
+		defer cancel()
+		restapi.RegisterUser(timedContext, w, r)
+	})
+
+	http.HandleFunc(loginEp, func(w http.ResponseWriter, r *http.Request) {
+		timedContext, cancel := context.WithTimeout(r.Context(), 5*time.Second)
+		defer cancel()
+		restapi.LoginUser(timedContext, w, r)
+	})
+
+	http.HandleFunc(downloadEp, func(w http.ResponseWriter, r *http.Request) {
+		timedContext, cancel := context.WithTimeout(r.Context(), 5*time.Second)
+		defer cancel()
+		restapi.DownloadMIDI(timedContext, w, r)
+	})
+
 	log.Fatal(http.ListenAndServe(":8080", nil))
 }
 
-type GCPStorageManager struct {
-	client *storage.Client
-}
+// type GCPStorageManager struct {
+// 	client *storage.Client
+// }
 
 const (
 	GCP_project = "gothic-oven-433521-e1"

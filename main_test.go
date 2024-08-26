@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -9,6 +10,10 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/integration/mtest"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 const (
@@ -149,6 +154,84 @@ func TestUploadListDelete(t *testing.T) {
 
 		if strings.Contains(string(body), filename) {
 			t.Fatalf("Deleted file still found in file list")
+		}
+	})
+}
+
+// mongoDB
+// Connect to MongoDB
+func connectMongoDB() (*mongo.Client, error) {
+	clientOptions := options.Client().ApplyURI("mongodb://localhost:27017")
+	client, err := mongo.Connect(context.TODO(), clientOptions)
+	if err != nil {
+		return nil, err
+	}
+	return client, nil
+}
+
+// Register a user
+func RegisterUser(client *mongo.Client, serialNumber, username, password string) error {
+	collection := client.Database("testdb").Collection("users")
+	user := bson.D{
+		{"serial_number", serialNumber},
+		{"username", username},
+		{"password", password},
+	}
+	_, err := collection.InsertOne(context.TODO(), user)
+	return err
+}
+
+// Login a user
+func LoginUser(client *mongo.Client, username, password string) (bool, error) {
+	collection := client.Database("testdb").Collection("users")
+	filter := bson.D{{"username", username}, {"password", password}}
+	var result bson.D
+	err := collection.FindOne(context.TODO(), filter).Decode(&result)
+	if err == mongo.ErrNoDocuments {
+		return false, nil
+	}
+	return err == nil, err
+}
+
+func TestRegisterUser(t *testing.T) {
+	mt := mtest.New(t, mtest.NewOptions().ClientType(mtest.Mock))
+
+	mt.Run("register user", func(mt *mtest.T) {
+		client, err := connectMongoDB()
+		if err != nil {
+			t.Fatalf("Failed to connect to MongoDB: %v", err)
+		}
+
+		err = RegisterUser(client, "12345", "testuser", "testpass")
+		if err != nil {
+			t.Errorf("Failed to register user: %v", err)
+		}
+	})
+}
+
+func TestLoginUser(t *testing.T) {
+	mt := mtest.New(t, mtest.NewOptions().ClientType(mtest.Mock))
+
+	mt.Run("login user", func(mt *mtest.T) {
+		client, err := connectMongoDB()
+		if err != nil {
+			t.Fatalf("Failed to connect to MongoDB: %v", err)
+		}
+
+		// First, register a user
+		err = RegisterUser(client, "12345", "testuser", "testpass")
+		if err != nil {
+			t.Fatalf("Failed to register user: %v", err)
+		}
+
+		// Now, try to log in
+		success, err := LoginUser(client, "testuser", "testpass")
+		if err != nil {
+			t.Errorf("Failed to log in user: %v", err)
+		}
+
+		if !success {
+			t.Errorf("Expected login to succeed, but it failed")
 		}
 	})
 }
