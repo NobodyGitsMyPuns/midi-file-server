@@ -4,7 +4,8 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"io/ioutil"
+	"io"
+
 	"net/http"
 	"os"
 	"strings"
@@ -71,7 +72,7 @@ func TestUploadListDelete(t *testing.T) {
 			t.Fatalf("Unexpected status code: %d", resp.StatusCode)
 		}
 
-		body, err := ioutil.ReadAll(resp.Body)
+		body, err := io.ReadAll(resp.Body)
 		if err != nil {
 			t.Fatalf("Failed to read response body: %v", err)
 		}
@@ -93,7 +94,7 @@ func TestUploadListDelete(t *testing.T) {
 			t.Fatalf("Unexpected status code: %d", resp.StatusCode)
 		}
 
-		body, err := ioutil.ReadAll(resp.Body)
+		body, err := io.ReadAll(resp.Body)
 		if err != nil {
 			t.Fatalf("Failed to read response body: %v", err)
 		}
@@ -124,7 +125,7 @@ func TestUploadListDelete(t *testing.T) {
 			t.Fatalf("Unexpected status code: %d", resp.StatusCode)
 		}
 
-		body, err := ioutil.ReadAll(resp.Body)
+		body, err := io.ReadAll(resp.Body)
 		if err != nil {
 			t.Fatalf("Failed to read response body: %v", err)
 		}
@@ -146,7 +147,7 @@ func TestUploadListDelete(t *testing.T) {
 			t.Fatalf("Unexpected status code: %d", resp.StatusCode)
 		}
 
-		body, err := ioutil.ReadAll(resp.Body)
+		body, err := io.ReadAll(resp.Body)
 		if err != nil {
 			t.Fatalf("Failed to read response body: %v", err)
 		}
