@@ -24,7 +24,9 @@ require (
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/googleapis/enterprise-certificate-proxy v0.3.2 // indirect
 	github.com/googleapis/gax-go/v2 v2.12.5 // indirect
+	github.com/paypal/gatt v0.0.0-20151011220935-4ae819d591cf
 	github.com/pmezard/go-difflib v1.0.0 // indirect
+	github.com/tarm/serial v0.0.0-20180830185346-98f6abe2eb07
 	go.opencensus.io v0.24.0 // indirect
 	go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc v0.49.0 // indirect
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.49.0 // indirect
