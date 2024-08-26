@@ -36,10 +36,6 @@ func main() {
 	log.Fatal(http.ListenAndServe(":8080", nil))
 }
 
-func ReturnOne() int {
-	return 1
-}
-
 type GCPStorageManager struct {
 	client *storage.Client
 }

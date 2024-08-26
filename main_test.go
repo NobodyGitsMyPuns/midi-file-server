@@ -15,12 +15,6 @@ const (
 	Acct = "112168818644504200034"
 )
 
-func TestReturnOne(t *testing.T) {
-	if ReturnOne() != 1 {
-		t.Error("Expected 1")
-	}
-}
-
 func TestGetBucketLs(t *testing.T) {
 	err := ListBucketContents("midi_file_storage")
 	require.NoError(t, err)
