@@ -173,9 +173,9 @@ func connectMongoDB() (*mongo.Client, error) {
 func RegisterUser(client *mongo.Client, serialNumber, username, password string) error {
 	collection := client.Database("testdb").Collection("users")
 	user := bson.D{
-		{"serial_number", serialNumber},
-		{"username", username},
-		{"password", password},
+		{Key: "serial_number", Value: serialNumber},
+		{Key: "username", Value: username},
+		{Key: "password", Value: password},
 	}
 	_, err := collection.InsertOne(context.TODO(), user)
 	return err
@@ -184,7 +184,7 @@ func RegisterUser(client *mongo.Client, serialNumber, username, password string)
 // Login a user
 func LoginUser(client *mongo.Client, username, password string) (bool, error) {
 	collection := client.Database("testdb").Collection("users")
-	filter := bson.D{{"username", username}, {"password", password}}
+	filter := bson.D{{Key: "username", Value: username}, {Key: "password", Value: password}}
 	var result bson.D
 	err := collection.FindOne(context.TODO(), filter).Decode(&result)
 	if err == mongo.ErrNoDocuments {
