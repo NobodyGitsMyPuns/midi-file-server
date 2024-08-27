@@ -4,6 +4,7 @@ metadata:
   name: midi-file-server-service
 spec:
   type: LoadBalancer
+  loadBalancerIP: "34.30.244.244"
   selector:
     app: midi-file-server
   ports:

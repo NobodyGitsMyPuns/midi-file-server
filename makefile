@@ -1,3 +1,9 @@
+# Load environment variables from .env file
+ifneq (,$(wildcard ./.env))
+    include .env
+    export
+endif
+
 # Go parameters
 GOCMD := go
 K8S_DIR := .k8
@@ -10,12 +16,12 @@ GOGET := $(GOCMD) get
 GOLINT := golangci-lint
 
 # Define variables
-DOCKER_IMAGE := gcr.io/gothic-oven-433521-e1/midi-file-server
+DOCKER_IMAGE := $(DOCKER_IMAGE)
 MINIKUBE_PROFILE := minikube
 MINIKUBE_IMAGE := midi-file-server:latest
 GKE_CLUSTER_NAME := midi-cluster
-GKE_ZONE := us-central1-c
-GKE_PROJECT := gothic-oven-433521-e1
+GKE_ZONE := $(GKE_ZONE)
+GKE_PROJECT := $(GKE_PROJECT)
 
 # Name of the executable
 BINARY_NAME := midi-file-server
@@ -92,7 +98,7 @@ all: clean get build test lint build-docker push-docker deploy-mongo deploy-app 
 .PHONY: deploy-service
 deploy-service:
 	@echo "Deploying service to Minikube..."
-	kubectl apply -f $(K8S_DIR)/midi-file-server-service.yaml
+	sed 's/${LOAD_BALANCER_IP}/$(LOAD_BALANCER_IP)/g' $(K8S_DIR)/midi-file-server-service.yaml | kubectl apply -f -
 
 .PHONY: docker-build
 docker-build:
@@ -103,14 +109,14 @@ docker-build:
 gke-deploy: docker-build
 	gcloud container clusters get-credentials $(GKE_CLUSTER_NAME) --zone $(GKE_ZONE) --project $(GKE_PROJECT)
 	kubectl apply -f $(K8S_DIR)/midi-file-server-deployment.yaml
-	kubectl apply -f $(K8S_DIR)/midi-file-server-service.yaml
+	sed 's/${LOAD_BALANCER_IP}/$(LOAD_BALANCER_IP)/g' $(K8S_DIR)/midi-file-server-service.yaml | kubectl apply -f -
 
 .PHONY: minikube-deploy
 minikube-deploy:
 	eval $$(minikube docker-env)
 	docker build -t $(MINIKUBE_IMAGE) .
-	kubectl apply -f $(K8S_DIR)/midi-file-server-deployment.yaml
-	kubectl apply -f $(K8S_DIR)/midi-file-server-service.yaml
+	sed 's/${LOAD_BALANCER_IP}/$(LOAD_BALANCER_IP)/g' $(K8S_DIR)/midi-file-server-deployment.yaml | kubectl apply -f -
+	sed 's/${LOAD_BALANCER_IP}/$(LOAD_BALANCER_IP)/g' $(K8S_DIR)/midi-file-server-service.yaml | kubectl apply -f -
 
 .PHONY: minikube-clean
 minikube-clean:
