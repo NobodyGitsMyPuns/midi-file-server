@@ -158,9 +158,9 @@ func TestGetBucketLs(t *testing.T) {
 
 // mongoDB
 // Connect to MongoDB
-func connectMongoDB() (*mongo.Client, error) {
+func connectMongoDBLocal() (*mongo.Client, error) {
 	clientOptions := options.Client().ApplyURI("mongodb://localhost:27017")
-	client, err := mongo.Connect(context.TODO(), clientOptions)
+	client, err := mongo.Connect(context.Background(), clientOptions)
 	if err != nil {
 		return nil, err
 	}
@@ -175,7 +175,7 @@ func RegisterUser(client *mongo.Client, serialNumber, username, password string)
 		{Key: "username", Value: username},
 		{Key: "password", Value: password},
 	}
-	_, err := collection.InsertOne(context.TODO(), user)
+	_, err := collection.InsertOne(context.Background(), user)
 	return err
 }
 
@@ -184,7 +184,7 @@ func LoginUser(client *mongo.Client, username, password string) (bool, error) {
 	collection := client.Database("testdb").Collection("users")
 	filter := bson.D{{Key: "username", Value: username}, {Key: "password", Value: password}}
 	var result bson.D
-	err := collection.FindOne(context.TODO(), filter).Decode(&result)
+	err := collection.FindOne(context.Background(), filter).Decode(&result)
 	if err == mongo.ErrNoDocuments {
 		return false, nil
 	}
@@ -195,7 +195,7 @@ func TestRegisterUser(t *testing.T) {
 	mt := mtest.New(t, mtest.NewOptions().ClientType(mtest.Mock))
 
 	mt.Run("register user", func(mt *mtest.T) {
-		client, err := connectMongoDB()
+		client, err := connectMongoDBLocal()
 		if err != nil {
 			t.Fatalf("Failed to connect to MongoDB: %v", err)
 		}
@@ -211,7 +211,7 @@ func TestLoginUser(t *testing.T) {
 	mt := mtest.New(t, mtest.NewOptions().ClientType(mtest.Mock))
 
 	mt.Run("login user", func(mt *mtest.T) {
-		client, err := connectMongoDB()
+		client, err := connectMongoDBLocal()
 		if err != nil {
 			t.Fatalf("Failed to connect to MongoDB: %v", err)
 		}

@@ -71,7 +71,8 @@ push-docker:
 
 .PHONY: deploy-mongo
 deploy-mongo:
-	@echo "Deploying MongoDB to Minikube..."
+	@echo "Deploying MongoDB to GCP..."
+	gcloud container clusters get-credentials $(GKE_CLUSTER_NAME) --zone $(GKE_ZONE) --project $(GKE_PROJECT)
 	kubectl apply -f $(K8S_DIR)/mongodb-pv.yaml 
 	kubectl apply -f $(K8S_DIR)/mongodb-pvc.yaml
 	kubectl apply -f $(K8S_DIR)/mongodb-deployment.yaml 
@@ -79,13 +80,19 @@ deploy-mongo:
 
 .PHONY: deploy-app
 deploy-app:
-	@echo "Deploying application to Minikube..."
+	@echo "Deploying application to GCP..."
+	gcloud container clusters get-credentials $(GKE_CLUSTER_NAME) --zone $(GKE_ZONE) --project $(GKE_PROJECT)
 	kubectl apply -f $(K8S_DIR)/midi-file-server-deployment.yaml
 	kubectl apply -f $(K8S_DIR)/midi-file-server-service.yaml
 
 .PHONY: all
-all: clean get build test lint build-docker push-docker deploy-mongo deploy-app
+all: clean get build test lint build-docker push-docker deploy-mongo deploy-app deploy-service
 	@echo "Deployment complete!"
+
+.PHONY: deploy-service
+deploy-service:
+	@echo "Deploying service to Minikube..."
+	kubectl apply -f $(K8S_DIR)/midi-file-server-service.yaml
 
 .PHONY: docker-build
 docker-build:

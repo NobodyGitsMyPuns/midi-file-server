@@ -5,21 +5,23 @@ import (
 	"fmt"
 	"io"
 	"log"
-	restapi "midi-file-server/rest_api"
 	"net/http"
 	"os"
 	"path/filepath"
 	"time"
 
+	restapi "midi-file-server/rest_api"
+
 	"cloud.google.com/go/storage"
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 	"google.golang.org/api/iterator"
 	"google.golang.org/api/option"
 )
 
 var (
 	HealthEp   = "health"
-	VqaEp      = "vqa"
-	ValidateEp = "validate"
 	VersionEp  = "v1"
 	RegisterEp = "register"
 	LoginEp    = "login"
@@ -27,6 +29,22 @@ var (
 )
 
 func main() {
+	// Connect to MongoDB
+	client, err := connectMongoDB()
+	if err != nil {
+		log.Fatalf("Failed to connect to MongoDB: %v", err)
+	}
+	defer func() {
+		if err := client.Disconnect(context.TODO()); err != nil {
+			log.Fatalf("Failed to disconnect from MongoDB: %v", err)
+		} else {
+			fmt.Println("Disconnected from MongoDB successfully.")
+		}
+	}()
+
+	// Ensure that the necessary database and collections exist
+	ensureDatabaseAndCollections(client)
+
 	healthEp := fmt.Sprintf("/%s/%s", VersionEp, HealthEp)
 	registerEp := fmt.Sprintf("/%s/%s", VersionEp, RegisterEp)
 	loginEp := fmt.Sprintf("/%s/%s", VersionEp, LoginEp)
@@ -61,9 +79,61 @@ func main() {
 	log.Fatal(http.ListenAndServe(":8080", nil))
 }
 
-// type GCPStorageManager struct {
-// 	client *storage.Client
-// }
+// connectMongoDB connects to MongoDB using the appropriate URI.
+func connectMongoDB() (*mongo.Client, error) {
+	clientOptions := options.Client().ApplyURI("mongodb://mongodb-service:27017") // Replace with your MongoDB service URI
+	client, err := mongo.Connect(context.TODO(), clientOptions)
+	if err != nil {
+		return nil, err
+	}
+
+	// Check the connection
+	err = client.Ping(context.TODO(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	fmt.Println("Connected to MongoDB!")
+	return client, nil
+}
+
+// ensureDatabaseAndCollections ensures that the necessary database and collections exist.
+func ensureDatabaseAndCollections(client *mongo.Client) {
+	database := client.Database("testdb")
+
+	// Check if the 'users' collection exists
+	collectionNames, err := database.ListCollectionNames(context.TODO(), bson.D{{Key: "name", Value: "users"}})
+	if err != nil {
+		log.Fatalf("Failed to list collections: %v", err)
+	}
+
+	if len(collectionNames) == 0 {
+		// The 'users' collection does not exist, so we create it
+		fmt.Println("Creating 'users' collection...")
+
+		// Create the 'users' collection
+		err := database.CreateCollection(context.TODO(), "users")
+		if err != nil {
+			log.Fatalf("Failed to create 'users' collection: %v", err)
+		}
+	} else {
+		fmt.Println("'users' collection already exists.")
+	}
+
+	// Optionally, create an index on the 'username' field to ensure uniqueness
+	collection := database.Collection("users")
+	indexModel := mongo.IndexModel{
+		Keys:    bson.D{{Key: "username", Value: 1}},
+		Options: options.Index().SetUnique(true),
+	}
+
+	_, err = collection.Indexes().CreateOne(context.TODO(), indexModel)
+	if err != nil {
+		log.Fatalf("Failed to create index on 'username': %v", err)
+	}
+
+	fmt.Println("Ensured that the 'testdb' database and 'users' collection exist.")
+}
 
 const (
 	GCP_project = "gothic-oven-433521-e1"

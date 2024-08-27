@@ -4,6 +4,6 @@ metadata:
   name: mongodb-service
 spec:
   ports:
-    - port: 27017
+  - port: 27017
   selector:
     app: mongodb
