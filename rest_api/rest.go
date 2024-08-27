@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
+	"os"
 	"time"
 
 	"github.com/dgrijalva/jwt-go"
@@ -21,13 +22,19 @@ func init() {
 	// Connect to MongoDB
 	var err error
 	ctx := context.Background()
-	client, err = mongo.Connect(ctx, options.Client().ApplyURI("mongodb://localhost:27017"))
+
+	// Read the MongoDB URI from the environment variable
+	mongoURI := os.Getenv("MONGODB_URI")
+	if mongoURI == "" {
+		// Fallback to a default value if the environment variable is not set
+		mongoURI = "mongodb://mongodb-service:27017"
+	}
+
+	client, err = mongo.Connect(ctx, options.Client().ApplyURI(mongoURI))
 	if err != nil {
 		log.Fatal(err)
 	}
-	if err != nil {
-		log.Fatal(err)
-	}
+
 	db = client.Database("testdb")
 }
 

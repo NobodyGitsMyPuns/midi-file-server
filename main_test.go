@@ -160,7 +160,8 @@ func TestGetBucketLs(t *testing.T) {
 // Connect to MongoDB
 func connectMongoDBLocal() (*mongo.Client, error) {
 	clientOptions := options.Client().ApplyURI("mongodb://localhost:27017")
-	client, err := mongo.Connect(context.Background(), clientOptions)
+	client, err := mongo.Connect(context.Background(), clientOptions) //todod old
+
 	if err != nil {
 		return nil, err
 	}
