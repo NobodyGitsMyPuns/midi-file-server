@@ -1,0 +1,19 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: midi-file-server-deployment
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: midi-file-server
+  template:
+    metadata:
+      labels:
+        app: midi-file-server
+    spec:
+      containers:
+      - name: midi-file-server
+        image: gcr.io/gothic-oven-433521-e1/midi-file-server:latest
+        ports:
+        - containerPort: 8080
