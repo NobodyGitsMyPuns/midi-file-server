@@ -17,3 +17,14 @@ spec:
         image: gcr.io/gothic-oven-433521-e1/midi-file-server:latest
         ports:
         - containerPort: 8080
+        env:
+        - name: GOOGLE_APPLICATION_CREDENTIALS
+          value: /var/secrets/google/gothic_key.json
+        volumeMounts:
+        - name: gcr-secret
+          mountPath: /var/secrets/google
+          readOnly: true
+      volumes:
+      - name: gcr-secret
+        secret:
+          secretName: gcr-secret

@@ -47,7 +47,7 @@ docker pull gcr.io/gothic-oven-433521-e1/midi-file-server:latest
 
 
 ### Create GCP secret
-jesselopez@Jesses-Mac-mini midi-file-server % kubectl create secret docker-registry gcr-secret \
+ kubectl create secret docker-registry gcr-secret \
     --docker-server=gcr.io \
     --docker-username=_json_key \
     --docker-password="$(cat /Users/jesselopez/Documents/repos/midi-file-server/gothic_key.json)" \
@@ -97,3 +97,4 @@ kubectl config current-context
 docker buildx build --platform linux/amd64 -t gcr.io/gothic-oven-433521-e1/midi-file-server:latest .
 docker push gcr.io/gothic-oven-433521-e1/midi-file-server:latest
 kubectl rollout restart deployment my-go-app-deployment
+gcloud secrets list --project=YOUR_PROJECT_ID

@@ -3,11 +3,13 @@ package restapi
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
 	"os"
 	"time"
 
+	"cloud.google.com/go/storage"
 	"github.com/dgrijalva/jwt-go"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -162,33 +164,89 @@ func LoginUser(ctx context.Context, w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Internal Server Error: Failed to respond with token", http.StatusInternalServerError)
 	}
 }
-
 func DownloadMIDI(ctx context.Context, w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodGet {
-		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
-		log.Default().Println("Method Not Allowed")
+	var req DownloadRequest
+	err := json.NewDecoder(r.Body).Decode(&req)
+	if err != nil {
+		log.Printf("Failed to decode download request: %v", err)
+		http.Error(w, "Bad Request: Invalid download request", http.StatusBadRequest)
 		return
 	}
 
-	tokenString := r.Header.Get("Authorization")
-	if tokenString == "" {
-		http.Error(w, "No token provided", http.StatusUnauthorized)
-		log.Default().Println("No token provided")
+	if req.BucketName == "" {
+		http.Error(w, "Missing midi bucket", http.StatusInternalServerError)
 		return
 	}
 
-	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
-		return []byte("your-secret-key"), nil
-	})
-	log.Default().Println(token)
-
-	if err != nil || !token.Valid {
-		http.Error(w, "Invalid token", http.StatusUnauthorized)
-		log.Fatal("Invalid token")
+	if req.ObjectName == "" {
+		http.Error(w, "Missing midi object", http.StatusInternalServerError)
 		return
 	}
 
-	w.Header().Set("Content-Type", "audio/midi")
-	w.Header().Set("Content-Disposition", "attachment; filename=midi-file.mid")
-	http.ServeFile(w, r, "path/to/your/midi/file.mid")
+	signedURL, err := generateSignedURL(ctx, req.BucketName, req.ObjectName)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Failed to generate signed URL: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	response := struct {
+		SignedURL  string `json:"signedUrl"`
+		ObjectName string `json:"objectName"`
+	}{
+		SignedURL:  signedURL,
+		ObjectName: req.ObjectName,
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	err = json.NewEncoder(w).Encode(response)
+	if err != nil {
+		log.Printf("Failed to encode signed URL response: %v", err)
+		http.Error(w, "Internal Server Error: Failed to respond with signed URL", http.StatusInternalServerError)
+	}
+}
+
+func getGoogleAccessID(ctx context.Context, secretName string) (string, error) {
+	client, err := secretmanager.NewClient(ctx)
+	if err != nil {
+		return "", fmt.Errorf("failed to create secretmanager client: %w", err)
+	}
+	defer client.Close()
+
+	req := &secretmanagerpb.AccessSecretVersionRequest{
+		Name: secretName,
+	}
+
+	result, err := client.AccessSecretVersion(ctx, req)
+	if err != nil {
+		return "", fmt.Errorf("failed to access secret version: %w", err)
+	}
+
+	var serviceAccount ServiceAccount
+	if err := json.Unmarshal(result.Payload.Data, &serviceAccount); err != nil {
+		return "", fmt.Errorf("failed to unmarshal secret data: %w", err)
+	}
+
+	return serviceAccount.ClientEmail, nil
+}
+
+func generateSignedURL(ctx context.Context, bucketName, objectName, googleAccessID string) (string, error) {
+	client, err := storage.NewClient(ctx)
+	if err != nil {
+		return "", fmt.Errorf("failed to create storage client: %w", err)
+	}
+	defer client.Close()
+
+	opts := &storage.SignedURLOptions{
+		GoogleAccessID: googleAccessID,
+		Scheme:         storage.SigningSchemeV4,
+		Method:         http.MethodGet,
+		Expires:        time.Now().Add(5 * time.Minute),
+	}
+
+	url, err := storage.SignedURL(bucketName, objectName, opts)
+	if err != nil {
+		return "", fmt.Errorf("failed to create signed URL: %w", err)
+	}
+
+	return url, nil
 }

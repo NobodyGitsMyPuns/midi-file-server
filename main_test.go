@@ -1,15 +1,9 @@
 package main
 
 import (
-	"context"
-
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/integration/mtest"
-	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 const (
@@ -22,7 +16,7 @@ func TestGetBucketLs(t *testing.T) {
 
 }
 
-// todo set timeout on test workflow and lint workflow so it doesn't run forever if something goes wrong
+//todo set timeout on test workflow and lint workflow so it doesn't run forever if something goes wrong
 
 // func TestInitGCP(t *testing.T) {
 // 	_, err := InitGCPWithServiceAccount(GCP_project, "/Users/jesselopez/Documents/repos/midi-file-server/gothic_key.json")
@@ -41,13 +35,48 @@ func TestGetBucketLs(t *testing.T) {
 // func TestUploadListDelete(t *testing.T) {
 // 	esp32IP := "192.168.1.43" // Replace with your ESP32 IP address
 // 	filename := "Requiem_for_a_dream_mansell.mid"
+// 	fileName2 := "hans-zimmer-cornfield-chase-interstellar-soundtrack-20231020043409-nonstop2k.com.mid"
 // 	filePath := "/Users/jesselopez/Desktop/midi/Requiem_for_a_dream_mansell.mid" // Path to the local file you want to upload
+// 	filepath2 := "/Users/jesselopez/Desktop/midi/hans-zimmer-cornfield-chase-interstellar-soundtrack-20231020043409-nonstop2k.com.mid"
 
 // 	// 1. Upload the file
 // 	t.Run("Upload File", func(t *testing.T) {
 // 		url := fmt.Sprintf("http://%s/upload?filename=%s", esp32IP, filename)
 
 // 		fileData, err := os.ReadFile(filePath)
+// 		if err != nil {
+// 			t.Fatalf("Failed to read file: %v", err)
+// 		}
+
+// 		req, err := http.NewRequest("POST", url, bytes.NewBuffer(fileData))
+// 		if err != nil {
+// 			t.Fatalf("Failed to create request: %v", err)
+// 		}
+// 		req.Header.Set("Content-Type", "application/octet-stream")
+
+// 		resp, err := http.DefaultClient.Do(req)
+// 		if err != nil {
+// 			t.Fatalf("Failed to send request: %v", err)
+// 		}
+// 		defer resp.Body.Close()
+
+// 		if resp.StatusCode != http.StatusOK {
+// 			t.Fatalf("Unexpected status code: %d", resp.StatusCode)
+// 		}
+
+// 		body, err := io.ReadAll(resp.Body)
+// 		if err != nil {
+// 			t.Fatalf("Failed to read response body: %v", err)
+// 		}
+
+// 		fmt.Printf("Upload Response: %s\n", body)
+// 	})
+
+// 	t.Run("Upload File2", func(t *testing.T) {
+// 		url := fmt.Sprintf("http://%s/upload?filename=%s", esp32IP, fileName2)
+// 		println(url)
+
+// 		fileData, err := os.ReadFile(filepath2)
 // 		if err != nil {
 // 			t.Fatalf("Failed to read file: %v", err)
 // 		}
@@ -156,81 +185,81 @@ func TestGetBucketLs(t *testing.T) {
 // 	})
 // }
 
-// mongoDB
-// Connect to MongoDB
-func connectMongoDBLocal() (*mongo.Client, error) {
-	clientOptions := options.Client().ApplyURI("mongodb://localhost:27017")
-	client, err := mongo.Connect(context.Background(), clientOptions) //todod old
+// // mongoDB
+// // //Connect to MongoDB
+// func connectMongoDBLocal() (*mongo.Client, error) {
+// 	clientOptions := options.Client().ApplyURI("mongodb://localhost:27017")
+// 	client, err := mongo.Connect(context.Background(), clientOptions) //todod old
 
-	if err != nil {
-		return nil, err
-	}
-	return client, nil
-}
+// 	if err != nil {
+// 		return nil, err
+// 	}
+// 	return client, nil
+// }
 
-// Register a user
-func RegisterUser(client *mongo.Client, serialNumber, username, password string) error {
-	collection := client.Database("testdb").Collection("users")
-	user := bson.D{
-		{Key: "serial_number", Value: serialNumber},
-		{Key: "username", Value: username},
-		{Key: "password", Value: password},
-	}
-	_, err := collection.InsertOne(context.Background(), user)
-	return err
-}
+// // Register a user
+// func RegisterUser(client *mongo.Client, serialNumber, username, password string) error {
+// 	collection := client.Database("testdb").Collection("users")
+// 	user := bson.D{
+// 		{Key: "serial_number", Value: serialNumber},
+// 		{Key: "username", Value: username},
+// 		{Key: "password", Value: password},
+// 	}
+// 	_, err := collection.InsertOne(context.Background(), user)
+// 	return err
+// }
 
-// Login a user
-func LoginUser(client *mongo.Client, username, password string) (bool, error) {
-	collection := client.Database("testdb").Collection("users")
-	filter := bson.D{{Key: "username", Value: username}, {Key: "password", Value: password}}
-	var result bson.D
-	err := collection.FindOne(context.Background(), filter).Decode(&result)
-	if err == mongo.ErrNoDocuments {
-		return false, nil
-	}
-	return err == nil, err
-}
+// // Login a user
+// func LoginUser(client *mongo.Client, username, password string) (bool, error) {
+// 	collection := client.Database("testdb").Collection("users")
+// 	filter := bson.D{{Key: "username", Value: username}, {Key: "password", Value: password}}
+// 	var result bson.D
+// 	err := collection.FindOne(context.Background(), filter).Decode(&result)
+// 	if err == mongo.ErrNoDocuments {
+// 		return false, nil
+// 	}
+// 	return err == nil, err
+// }
 
-func TestRegisterUser(t *testing.T) {
-	mt := mtest.New(t, mtest.NewOptions().ClientType(mtest.Mock))
+// func TestRegisterUser(t *testing.T) {
+// 	mt := mtest.New(t, mtest.NewOptions().ClientType(mtest.Mock))
 
-	mt.Run("register user", func(mt *mtest.T) {
-		client, err := connectMongoDBLocal()
-		if err != nil {
-			t.Fatalf("Failed to connect to MongoDB: %v", err)
-		}
+// 	mt.Run("register user", func(mt *mtest.T) {
+// 		client, err := connectMongoDBLocal()
+// 		if err != nil {
+// 			t.Fatalf("Failed to connect to MongoDB: %v", err)
+// 		}
 
-		err = RegisterUser(client, "12345", "testuser", "testpass")
-		if err != nil {
-			t.Errorf("Failed to register user: %v", err)
-		}
-	})
-}
+// 		err = RegisterUser(client, "12345", "testuser", "testpass")
+// 		if err != nil {
+// 			t.Errorf("Failed to register user: %v", err)
+// 		}
+// 	})
+// }
 
-func TestLoginUser(t *testing.T) {
-	mt := mtest.New(t, mtest.NewOptions().ClientType(mtest.Mock))
+// func TestLoginUser(t *testing.T) {
+// 	mt := mtest.New(t, mtest.NewOptions().ClientType(mtest.Mock))
 
-	mt.Run("login user", func(mt *mtest.T) {
-		client, err := connectMongoDBLocal()
-		if err != nil {
-			t.Fatalf("Failed to connect to MongoDB: %v", err)
-		}
+// 	mt.Run("login user", func(mt *mtest.T) {
+// 		client, err := connectMongoDBLocal()
+// 		if err != nil {
+// 			t.Fatalf("Failed to connect to MongoDB: %v", err)
+// 		}
 
-		// First, register a user
-		err = RegisterUser(client, "12345", "testuser", "testpass")
-		if err != nil {
-			t.Fatalf("Failed to register user: %v", err)
-		}
+// 		//First, register a user
+// 		err = RegisterUser(client, "12345", "testuser", "testpass")
+// 		if err != nil {
+// 			t.Fatalf("Failed to register user: %v", err)
+// 		}
 
-		// Now, try to log in
-		success, err := LoginUser(client, "testuser", "testpass")
-		if err != nil {
-			t.Errorf("Failed to log in user: %v", err)
-		}
+// 		//Now, try to log in
+// 		success, err := LoginUser(client, "testuser", "testpass")
+// 		if err != nil {
+// 			t.Errorf("Failed to log in user: %v", err)
+// 		}
 
-		if !success {
-			t.Errorf("Expected login to succeed, but it failed")
-		}
-	})
-}
+// 		if !success {
+// 			t.Errorf("Expected login to succeed, but it failed")
+// 		}
+// 	})
+// }

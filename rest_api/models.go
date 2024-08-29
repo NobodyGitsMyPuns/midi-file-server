@@ -12,3 +12,12 @@ type User struct {
 	OneTimePassword string             `json:"otp" bson:"otp"`
 	SerialNumber    string             `json:"serialNumber" bson:"serialNumber"`
 }
+
+type DownloadRequest struct {
+	BucketName string `json:"bucketName"`
+	ObjectName string `json:"objectName"`
+}
+type DownloadResponse struct {
+	SignedURL  string `json:"signedUrl"`
+	ObjectName string `json:"objectName"`
+}

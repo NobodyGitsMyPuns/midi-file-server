@@ -128,3 +128,12 @@ gke-clean:
 	gcloud container clusters get-credentials $(GKE_CLUSTER_NAME) --zone $(GKE_ZONE) --project $(GKE_PROJECT)
 	kubectl delete -f $(K8S_DIR)/midi-file-server-deployment.yaml
 	kubectl delete -f $(K8S_DIR)/midi-file-server-service.yaml
+
+
+.PHONY: build-deploy-service
+build-deploy-service: build-docker push-docker deploy-app
+	@echo "Service deployed to GCP!"
+
+.PHONY: print-env
+print-env:
+	@echo "MIDI_BUCKET is set to: $(MIDI_BUCKET)"

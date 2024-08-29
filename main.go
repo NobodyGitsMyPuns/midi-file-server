@@ -50,7 +50,7 @@ func main() {
 	loginEp := fmt.Sprintf("/%s/%s", VersionEp, LoginEp)
 	downloadEp := fmt.Sprintf("/%s/%s", VersionEp, DownloadEp)
 
-	fmt.Printf("Starting server on http://localhost:8080%s\n", healthEp)
+	log.Println("Starting server on " + healthEp + "\n")
 
 	http.HandleFunc(healthEp, func(w http.ResponseWriter, r *http.Request) {
 		timedContext, cancel := context.WithTimeout(r.Context(), 5*time.Second)
