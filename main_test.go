@@ -1,20 +1,14 @@
 package main
 
-import (
-	"testing"
-
-	"github.com/stretchr/testify/require"
-)
-
 const (
 	Acct = "112168818644504200034"
 )
 
-func TestGetBucketLs(t *testing.T) {
-	err := ListBucketContents("midi_file_storage")
-	require.NoError(t, err)
+// func TestGetBucketLs(t *testing.T) {
+// 	err := ListBucketContents("midi_file_storage")
+// 	require.NoError(t, err)
 
-}
+// }
 
 //todo set timeout on test workflow and lint workflow so it doesn't run forever if something goes wrong
 

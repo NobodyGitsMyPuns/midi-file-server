@@ -12,6 +12,7 @@ spec:
       labels:
         app: midi-file-server
     spec:
+      serviceAccountName: midi-server-admin
       containers:
       - name: midi-file-server
         image: gcr.io/gothic-oven-433521-e1/midi-file-server:latest
@@ -19,12 +20,18 @@ spec:
         - containerPort: 8080
         env:
         - name: GOOGLE_APPLICATION_CREDENTIALS
-          value: /var/secrets/google/gothic_key.json
+          value: /var/secrets/signer/signer.json # Ensure this path is correct
         volumeMounts:
         - name: gcr-secret
-          mountPath: /var/secrets/google
+          mountPath: /var/secrets/gcr
+          readOnly: true
+        - name: signer-secret
+          mountPath: /var/secrets/signer
           readOnly: true
       volumes:
       - name: gcr-secret
         secret:
           secretName: gcr-secret
+      - name: signer-secret
+        secret:
+          secretName: signer-secret

@@ -21,11 +21,11 @@ import (
 )
 
 var (
-	HealthEp   = "health"
-	VersionEp  = "v1"
-	RegisterEp = "register"
-	LoginEp    = "login"
-	DownloadEp = "download"
+	HealthEp     = "health"
+	VersionEp    = "v1"
+	RegisterEp   = "register"
+	LoginEp      = "login"
+	GetSignedUrl = "get-signed-url"
 )
 
 func main() {
@@ -48,7 +48,7 @@ func main() {
 	healthEp := fmt.Sprintf("/%s/%s", VersionEp, HealthEp)
 	registerEp := fmt.Sprintf("/%s/%s", VersionEp, RegisterEp)
 	loginEp := fmt.Sprintf("/%s/%s", VersionEp, LoginEp)
-	downloadEp := fmt.Sprintf("/%s/%s", VersionEp, DownloadEp)
+	getSignedUrlEp := fmt.Sprintf("/%s/%s", VersionEp, GetSignedUrl)
 
 	log.Println("Starting server on " + healthEp + "\n")
 
@@ -70,10 +70,10 @@ func main() {
 		restapi.LoginUser(timedContext, w, r)
 	})
 
-	http.HandleFunc(downloadEp, func(w http.ResponseWriter, r *http.Request) {
+	http.HandleFunc(getSignedUrlEp, func(w http.ResponseWriter, r *http.Request) {
 		timedContext, cancel := context.WithTimeout(r.Context(), 5*time.Second)
 		defer cancel()
-		restapi.DownloadMIDI(timedContext, w, r)
+		restapi.GetSignedUrl(timedContext, w, r)
 	})
 
 	log.Fatal(http.ListenAndServe(":8080", nil))

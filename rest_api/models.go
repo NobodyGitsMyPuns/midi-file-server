@@ -13,7 +13,7 @@ type User struct {
 	SerialNumber    string             `json:"serialNumber" bson:"serialNumber"`
 }
 
-type DownloadRequest struct {
+type SignedUrlRequest struct {
 	BucketName string `json:"bucketName"`
 	ObjectName string `json:"objectName"`
 }

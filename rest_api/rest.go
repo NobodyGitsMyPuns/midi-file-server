@@ -15,6 +15,7 @@ import (
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"golang.org/x/crypto/bcrypt"
+	"golang.org/x/oauth2/google"
 )
 
 var client *mongo.Client
@@ -164,8 +165,9 @@ func LoginUser(ctx context.Context, w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Internal Server Error: Failed to respond with token", http.StatusInternalServerError)
 	}
 }
-func DownloadMIDI(ctx context.Context, w http.ResponseWriter, r *http.Request) {
-	var req DownloadRequest
+
+func GetSignedUrl(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+	var req SignedUrlRequest
 	err := json.NewDecoder(r.Body).Decode(&req)
 	if err != nil {
 		log.Printf("Failed to decode download request: %v", err)
@@ -205,42 +207,29 @@ func DownloadMIDI(ctx context.Context, w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func getGoogleAccessID(ctx context.Context, secretName string) (string, error) {
-	client, err := secretmanager.NewClient(ctx)
+func generateSignedURL(ctx context.Context, bucketName, objectName string) (string, error) {
+	// Load credentials from the environment variable or file
+	creds, err := google.FindDefaultCredentials(ctx, storage.ScopeReadOnly)
 	if err != nil {
-		return "", fmt.Errorf("failed to create secretmanager client: %w", err)
-	}
-	defer client.Close()
-
-	req := &secretmanagerpb.AccessSecretVersionRequest{
-		Name: secretName,
+		return "", fmt.Errorf("failed to find default credentials: %w", err)
 	}
 
-	result, err := client.AccessSecretVersion(ctx, req)
-	if err != nil {
-		return "", fmt.Errorf("failed to access secret version: %w", err)
+	// Parse the credentials JSON to extract the private key
+	var parsedCreds struct {
+		PrivateKey  string `json:"private_key"`
+		ClientEmail string `json:"client_email"`
 	}
 
-	var serviceAccount ServiceAccount
-	if err := json.Unmarshal(result.Payload.Data, &serviceAccount); err != nil {
-		return "", fmt.Errorf("failed to unmarshal secret data: %w", err)
+	if err := json.Unmarshal(creds.JSON, &parsedCreds); err != nil {
+		return "", fmt.Errorf("failed to parse credentials JSON: %w", err)
 	}
-
-	return serviceAccount.ClientEmail, nil
-}
-
-func generateSignedURL(ctx context.Context, bucketName, objectName, googleAccessID string) (string, error) {
-	client, err := storage.NewClient(ctx)
-	if err != nil {
-		return "", fmt.Errorf("failed to create storage client: %w", err)
-	}
-	defer client.Close()
 
 	opts := &storage.SignedURLOptions{
-		GoogleAccessID: googleAccessID,
+		GoogleAccessID: parsedCreds.ClientEmail,
 		Scheme:         storage.SigningSchemeV4,
-		Method:         http.MethodGet,
-		Expires:        time.Now().Add(5 * time.Minute),
+		Method:         "GET",
+		Expires:        time.Now().Add(15 * time.Minute),
+		PrivateKey:     []byte(parsedCreds.PrivateKey),
 	}
 
 	url, err := storage.SignedURL(bucketName, objectName, opts)
@@ -250,3 +239,30 @@ func generateSignedURL(ctx context.Context, bucketName, objectName, googleAccess
 
 	return url, nil
 }
+
+// func getGoogleAccessID(ctx context.Context, secretName string) (string, error) {
+// 	client, err := secretmanager.NewClient(ctx)
+// 	if err != nil {
+// 		return "", fmt.Errorf("failed to create secretmanager client: %w", err)
+// 	}
+// 	defer client.Close()
+
+// 	req := &secretmanagerpb.AccessSecretVersionRequest{
+// 		Name: secretName,
+// 	}
+
+// 	result, err := client.AccessSecretVersion(ctx, req)
+// 	if err != nil {
+// 		return "", fmt.Errorf("failed to access secret version: %w", err)
+// 	}
+
+// 	var serviceAccount struct {
+// 		ClientEmail string `json:"client_email"`
+// 	}
+
+// 	if err := json.Unmarshal(result.Payload.Data, &serviceAccount); err != nil {
+// 		return "", fmt.Errorf("failed to unmarshal secret data: %w", err)
+// 	}
+
+// 	return serviceAccount.ClientEmail, nil
+// }
