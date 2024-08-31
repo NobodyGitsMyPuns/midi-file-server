@@ -14,8 +14,11 @@ type User struct {
 }
 
 type SignedUrlRequest struct {
-	BucketName string `json:"bucketName"`
-	ObjectName string `json:"objectName"`
+	ObjectName []string `json:"objectName"`
+}
+
+type DownloadRespones struct {
+	DownloadResponse []DownloadResponse `json:"downloadResponse"`
 }
 type DownloadResponse struct {
 	SignedURL  string `json:"signedUrl"`

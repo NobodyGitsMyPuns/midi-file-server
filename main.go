@@ -16,80 +16,48 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
-	"google.golang.org/api/iterator"
 	"google.golang.org/api/option"
 )
 
-var (
-	HealthEp     = "health"
-	VersionEp    = "v1"
-	RegisterEp   = "register"
-	LoginEp      = "login"
-	GetSignedUrl = "get-signed-url"
+const (
+	HealthEp                 = "health"
+	VersionEp                = "v1"
+	RegisterEp               = "register"
+	LoginEp                  = "login"
+	GetSignedUrl             = "get-signed-url"
+	ListAvailableMidiBuckets = "list-available-midi-files"
+	ContextTimeout           = 60 * time.Second
+	GCPProject               = "gothic-oven-433521-e1"
+	MongoDBURI               = "mongodb://mongodb-service:27017"
+	DatabaseName             = "testdb"
+	UsersCollection          = "users"
 )
 
 func main() {
-	// Connect to MongoDB
 	client, err := connectMongoDB()
 	if err != nil {
 		log.Fatalf("Failed to connect to MongoDB: %v", err)
 	}
-	defer func() {
-		if err := client.Disconnect(context.TODO()); err != nil {
-			log.Fatalf("Failed to disconnect from MongoDB: %v", err)
-		} else {
-			fmt.Println("Disconnected from MongoDB successfully.")
-		}
-	}()
+	defer disconnectMongoDB(client)
 
-	// Ensure that the necessary database and collections exist
 	ensureDatabaseAndCollections(client)
 
-	healthEp := fmt.Sprintf("/%s/%s", VersionEp, HealthEp)
-	registerEp := fmt.Sprintf("/%s/%s", VersionEp, RegisterEp)
-	loginEp := fmt.Sprintf("/%s/%s", VersionEp, LoginEp)
-	getSignedUrlEp := fmt.Sprintf("/%s/%s", VersionEp, GetSignedUrl)
-
-	log.Println("Starting server on " + healthEp + "\n")
-
-	http.HandleFunc(healthEp, func(w http.ResponseWriter, r *http.Request) {
-		timedContext, cancel := context.WithTimeout(r.Context(), 5*time.Second)
-		defer cancel()
-		restapi.OnHealthSubmit(timedContext, w, r)
-	})
-
-	http.HandleFunc(registerEp, func(w http.ResponseWriter, r *http.Request) {
-		timedContext, cancel := context.WithTimeout(r.Context(), 5*time.Second)
-		defer cancel()
-		restapi.RegisterUser(timedContext, w, r)
-	})
-
-	http.HandleFunc(loginEp, func(w http.ResponseWriter, r *http.Request) {
-		timedContext, cancel := context.WithTimeout(r.Context(), 5*time.Second)
-		defer cancel()
-		restapi.LoginUser(timedContext, w, r)
-	})
-
-	http.HandleFunc(getSignedUrlEp, func(w http.ResponseWriter, r *http.Request) {
-		timedContext, cancel := context.WithTimeout(r.Context(), 5*time.Second)
-		defer cancel()
-		restapi.GetSignedUrl(timedContext, w, r)
-	})
-
+	http.HandleFunc(fmt.Sprintf("/%s/%s", VersionEp, HealthEp), withTimeout(restapi.OnHealthSubmit))
+	http.HandleFunc(fmt.Sprintf("/%s/%s", VersionEp, RegisterEp), withTimeout(restapi.RegisterUser))
+	http.HandleFunc(fmt.Sprintf("/%s/%s", VersionEp, LoginEp), withTimeout(restapi.LoginUser))
+	http.HandleFunc(fmt.Sprintf("/%s/%s", VersionEp, GetSignedUrl), withTimeout(restapi.GetSignedUrl))
+	http.HandleFunc(fmt.Sprintf("/%s/%s", VersionEp, ListAvailableMidiBuckets), withTimeout(restapi.ListBucketHandler))
 	log.Fatal(http.ListenAndServe(":8080", nil))
 }
 
-// connectMongoDB connects to MongoDB using the appropriate URI.
 func connectMongoDB() (*mongo.Client, error) {
-	clientOptions := options.Client().ApplyURI("mongodb://mongodb-service:27017") // Replace with your MongoDB service URI
+	clientOptions := options.Client().ApplyURI(MongoDBURI)
 	client, err := mongo.Connect(context.TODO(), clientOptions)
 	if err != nil {
 		return nil, err
 	}
 
-	// Check the connection
-	err = client.Ping(context.TODO(), nil)
-	if err != nil {
+	if err = client.Ping(context.TODO(), nil); err != nil {
 		return nil, err
 	}
 
@@ -97,120 +65,62 @@ func connectMongoDB() (*mongo.Client, error) {
 	return client, nil
 }
 
-// ensureDatabaseAndCollections ensures that the necessary database and collections exist.
-func ensureDatabaseAndCollections(client *mongo.Client) {
-	database := client.Database("testdb")
+func disconnectMongoDB(client *mongo.Client) {
+	if err := client.Disconnect(context.TODO()); err != nil {
+		log.Fatalf("Failed to disconnect from MongoDB: %v", err)
+	} else {
+		fmt.Println("Disconnected from MongoDB successfully.")
+	}
+}
 
-	// Check if the 'users' collection exists
-	collectionNames, err := database.ListCollectionNames(context.TODO(), bson.D{{Key: "name", Value: "users"}})
+func ensureDatabaseAndCollections(client *mongo.Client) {
+	database := client.Database(DatabaseName)
+	collectionNames, err := database.ListCollectionNames(context.TODO(), bson.D{{Key: "name", Value: UsersCollection}})
 	if err != nil {
 		log.Fatalf("Failed to list collections: %v", err)
 	}
 
 	if len(collectionNames) == 0 {
-		// The 'users' collection does not exist, so we create it
 		fmt.Println("Creating 'users' collection...")
-
-		// Create the 'users' collection
-		err := database.CreateCollection(context.TODO(), "users")
-		if err != nil {
+		if err := database.CreateCollection(context.TODO(), UsersCollection); err != nil {
 			log.Fatalf("Failed to create 'users' collection: %v", err)
 		}
 	} else {
 		fmt.Println("'users' collection already exists.")
 	}
 
-	// Optionally, create an index on the 'username' field to ensure uniqueness
-	collection := database.Collection("users")
 	indexModel := mongo.IndexModel{
 		Keys:    bson.D{{Key: "username", Value: 1}},
 		Options: options.Index().SetUnique(true),
 	}
-
-	_, err = collection.Indexes().CreateOne(context.TODO(), indexModel)
-	if err != nil {
+	if _, err := database.Collection(UsersCollection).Indexes().CreateOne(context.TODO(), indexModel); err != nil {
 		log.Fatalf("Failed to create index on 'username': %v", err)
 	}
 
 	fmt.Println("Ensured that the 'testdb' database and 'users' collection exist.")
 }
 
-const (
-	GCP_project = "gothic-oven-433521-e1"
-)
-
-func ListBucketContents(bucketName string) error {
-	ctx := context.Background()
-
-	// Initialize the client
-	client, err := storage.NewClient(ctx)
-	if err != nil {
-		return fmt.Errorf("failed to create client: %w", err)
+func withTimeout(handler func(context.Context, http.ResponseWriter, *http.Request)) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		timedContext, cancel := context.WithTimeout(r.Context(), ContextTimeout)
+		defer cancel()
+		handler(timedContext, w, r)
 	}
-	defer client.Close()
-
-	// Check if the client is nil
-	if client == nil {
-		return fmt.Errorf("storage client is nil")
-	}
-
-	bucket := client.Bucket(bucketName)
-
-	// Check if the bucket is nil
-	if bucket == nil {
-		return fmt.Errorf("bucket %s is nil", bucketName)
-	}
-
-	it := bucket.Objects(ctx, nil)
-	for {
-		attrs, err := it.Next()
-		if err == iterator.Done {
-			break
-		}
-		if err != nil {
-			return fmt.Errorf("failed to list objects: %w", err)
-		}
-		fmt.Println(attrs.Name)
-	}
-
-	return nil
 }
 
-// InitGCPWithServiceAccount initializes the GCP client using a service account ID and key file.
 func InitGCPWithServiceAccount(serviceAccountID, keyFilePath string) (*storage.Client, error) {
 	ctx := context.Background()
-
-	// Optionally, log the service account ID for debugging purposes (not generally needed for authentication)
-	fmt.Printf("Initializing GCP with service account: %s\n", serviceAccountID)
-
-	// Initialize the storage client using the service account key file
 	client, err := storage.NewClient(ctx, option.WithCredentialsFile(keyFilePath))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create storage client: %w", err)
-	}
-
-	// Optionally, list buckets or perform other verification steps to confirm credentials
-	it := client.Buckets(ctx, "your-project-id")
-	for {
-		bucketAttrs, err := it.Next()
-		if err != nil {
-			break // No more buckets, exit the loop
-		}
-		if err != nil {
-			return nil, fmt.Errorf("error iterating buckets: %w", err)
-		}
-		fmt.Println("Found bucket:", bucketAttrs.Name)
 	}
 
 	fmt.Println("GCP credentials initialized successfully with service account")
 	return client, nil
 }
 
-// UploadFiles uploads one or more files to a Google Cloud Storage bucket using a specified prefix.
 func UploadFiles(bucketName, prefix string, filePaths []string) error {
 	ctx := context.Background()
-
-	// Initialize the client
 	client, err := storage.NewClient(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to create storage client: %w", err)
@@ -218,26 +128,20 @@ func UploadFiles(bucketName, prefix string, filePaths []string) error {
 	defer client.Close()
 
 	for _, filePath := range filePaths {
-		// Open the file
+		fileName := filepath.Base(filePath)
+		objectPath := prefix + "/" + fileName
+		wc := client.Bucket(bucketName).Object(objectPath).NewWriter(ctx)
+
 		file, err := os.Open(filePath)
 		if err != nil {
 			return fmt.Errorf("failed to open file %s: %w", filePath, err)
 		}
 		defer file.Close()
 
-		// Get the file name from the file path
-		fileName := filepath.Base(filePath)
-
-		// Create a handle to the destination object in the bucket
-		objectPath := prefix + "/" + fileName
-		wc := client.Bucket(bucketName).Object(objectPath).NewWriter(ctx)
-
-		// Copy the file content to the GCS object
 		if _, err = io.Copy(wc, file); err != nil {
 			return fmt.Errorf("failed to upload file %s: %w", fileName, err)
 		}
 
-		// Close the writer to complete the upload
 		if err := wc.Close(); err != nil {
 			return fmt.Errorf("failed to complete upload for file %s: %w", fileName, err)
 		}
@@ -245,29 +149,5 @@ func UploadFiles(bucketName, prefix string, filePaths []string) error {
 		fmt.Printf("File %s uploaded successfully to bucket %s\n", fileName, bucketName)
 	}
 
-	return nil
-}
-
-// DeleteFile deletes a file from a Google Cloud Storage bucket using its name and prefix.
-func DeleteFile(bucketName, prefix, fileName string) error {
-	ctx := context.Background()
-
-	// Initialize the client
-	client, err := storage.NewClient(ctx)
-	if err != nil {
-		return fmt.Errorf("failed to create storage client: %w", err)
-	}
-	defer client.Close()
-
-	// Create a handle to the file (object) in the bucket
-	objectPath := prefix + "/" + fileName
-	obj := client.Bucket(bucketName).Object(objectPath)
-
-	// Delete the file
-	if err := obj.Delete(ctx); err != nil {
-		return fmt.Errorf("failed to delete file %s: %w", fileName, err)
-	}
-
-	fmt.Printf("File %s deleted successfully from bucket %s\n", fileName, bucketName)
 	return nil
 }
