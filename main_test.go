@@ -4,180 +4,41 @@ const (
 	Acct = "112168818644504200034"
 )
 
-// func TestGetBucketLs(t *testing.T) {
-// 	err := ListBucketContents("midi_file_storage")
-// 	require.NoError(t, err)
-
-// }
-
 //todo set timeout on test workflow and lint workflow so it doesn't run forever if something goes wrong
 
 // func TestInitGCP(t *testing.T) {
 // 	_, err := InitGCPWithServiceAccount(GCP_project, "/Users/jesselopez/Documents/repos/midi-file-server/gothic_key.json")
 // 	require.NoError(t, err)
 // }
+// Route to handle file listing
+//    server.on("/files", HTTP_GET, []() {
+// 	String fileList = "";
+// 	File root = LittleFS.open("/");
+// 	File file = root.openNextFile();
+// 	while (file) {
+// 		fileList += String(file.name()) + "\n";
+// 		file = root.openNextFile();
+// 	}
+// 	server.send(200, "text/plain", fileList);
+// });
 
-// func TestConnectBluetooth(t *testing.T) {
-// 	ip := "192.168.1.43"
-// 	message := "Hello from Mac!"
+// // Route to handle file deletion
+// server.on("/delete", HTTP_DELETE, []() {
+// 	if (server.hasArg("name")) {
+// 		String filename = "/" + server.arg("name");
+// 		if (LittleFS.remove(filename)) {
+// 			Serial.println("File deleted successfully");
 
-// 	err := ConnectToESP32(ip, message)
-
-// 	require.NoError(t, err)
-// }
-
-// func TestUploadListDelete(t *testing.T) {
-// 	esp32IP := "192.168.1.43" // Replace with your ESP32 IP address
-// 	filename := "Requiem_for_a_dream_mansell.mid"
-// 	fileName2 := "hans-zimmer-cornfield-chase-interstellar-soundtrack-20231020043409-nonstop2k.com.mid"
-// 	filePath := "/Users/jesselopez/Desktop/midi/Requiem_for_a_dream_mansell.mid" // Path to the local file you want to upload
-// 	filepath2 := "/Users/jesselopez/Desktop/midi/hans-zimmer-cornfield-chase-interstellar-soundtrack-20231020043409-nonstop2k.com.mid"
-
-// 	// 1. Upload the file
-// 	t.Run("Upload File", func(t *testing.T) {
-// 		url := fmt.Sprintf("http://%s/upload?filename=%s", esp32IP, filename)
-
-// 		fileData, err := os.ReadFile(filePath)
-// 		if err != nil {
-// 			t.Fatalf("Failed to read file: %v", err)
+// 			// Send a response
+// 			String response = "File Deleted";
+// 			server.send(200, "text/plain", response);
+// 		} else {
+// 			server.send(404, "text/plain", "File Not Found");
 // 		}
-
-// 		req, err := http.NewRequest("POST", url, bytes.NewBuffer(fileData))
-// 		if err != nil {
-// 			t.Fatalf("Failed to create request: %v", err)
-// 		}
-// 		req.Header.Set("Content-Type", "application/octet-stream")
-
-// 		resp, err := http.DefaultClient.Do(req)
-// 		if err != nil {
-// 			t.Fatalf("Failed to send request: %v", err)
-// 		}
-// 		defer resp.Body.Close()
-
-// 		if resp.StatusCode != http.StatusOK {
-// 			t.Fatalf("Unexpected status code: %d", resp.StatusCode)
-// 		}
-
-// 		body, err := io.ReadAll(resp.Body)
-// 		if err != nil {
-// 			t.Fatalf("Failed to read response body: %v", err)
-// 		}
-
-// 		fmt.Printf("Upload Response: %s\n", body)
-// 	})
-
-// 	t.Run("Upload File2", func(t *testing.T) {
-// 		url := fmt.Sprintf("http://%s/upload?filename=%s", esp32IP, fileName2)
-// 		println(url)
-
-// 		fileData, err := os.ReadFile(filepath2)
-// 		if err != nil {
-// 			t.Fatalf("Failed to read file: %v", err)
-// 		}
-
-// 		req, err := http.NewRequest("POST", url, bytes.NewBuffer(fileData))
-// 		if err != nil {
-// 			t.Fatalf("Failed to create request: %v", err)
-// 		}
-// 		req.Header.Set("Content-Type", "application/octet-stream")
-
-// 		resp, err := http.DefaultClient.Do(req)
-// 		if err != nil {
-// 			t.Fatalf("Failed to send request: %v", err)
-// 		}
-// 		defer resp.Body.Close()
-
-// 		if resp.StatusCode != http.StatusOK {
-// 			t.Fatalf("Unexpected status code: %d", resp.StatusCode)
-// 		}
-
-// 		body, err := io.ReadAll(resp.Body)
-// 		if err != nil {
-// 			t.Fatalf("Failed to read response body: %v", err)
-// 		}
-
-// 		fmt.Printf("Upload Response: %s\n", body)
-// 	})
-
-// 	// 2. List files
-// 	t.Run("List Files After Upload", func(t *testing.T) {
-// 		url := fmt.Sprintf("http://%s/files", esp32IP)
-
-// 		resp, err := http.Get(url)
-// 		if err != nil {
-// 			t.Fatalf("Failed to send request: %v", err)
-// 		}
-// 		defer resp.Body.Close()
-
-// 		if resp.StatusCode != http.StatusOK {
-// 			t.Fatalf("Unexpected status code: %d", resp.StatusCode)
-// 		}
-
-// 		body, err := io.ReadAll(resp.Body)
-// 		if err != nil {
-// 			t.Fatalf("Failed to read response body: %v", err)
-// 		}
-
-// 		fmt.Printf("Files After Upload:\n%s\n", body)
-
-// 		if !strings.Contains(string(body), filename) {
-// 			t.Fatalf("Uploaded file not found in file list")
-// 		}
-// 	})
-
-// 	// 3. Delete the uploaded file
-// 	t.Run("Delete File", func(t *testing.T) {
-// 		url := fmt.Sprintf("http://%s/delete?name=%s", esp32IP, filename)
-
-// 		req, err := http.NewRequest("DELETE", url, nil)
-// 		if err != nil {
-// 			t.Fatalf("Failed to create request: %v", err)
-// 		}
-
-// 		resp, err := http.DefaultClient.Do(req)
-// 		if err != nil {
-// 			t.Fatalf("Failed to send request: %v", err)
-// 		}
-// 		defer resp.Body.Close()
-
-// 		if resp.StatusCode != http.StatusOK {
-// 			t.Fatalf("Unexpected status code: %d", resp.StatusCode)
-// 		}
-
-// 		body, err := io.ReadAll(resp.Body)
-// 		if err != nil {
-// 			t.Fatalf("Failed to read response body: %v", err)
-// 		}
-
-// 		fmt.Printf("Delete Response: %s\n", body)
-// 	})
-
-// 	// 4. List files again to confirm deletion
-// 	t.Run("List Files After Deletion", func(t *testing.T) {
-// 		url := fmt.Sprintf("http://%s/files", esp32IP)
-
-// 		resp, err := http.Get(url)
-// 		if err != nil {
-// 			t.Fatalf("Failed to send request: %v", err)
-// 		}
-// 		defer resp.Body.Close()
-
-// 		if resp.StatusCode != http.StatusOK {
-// 			t.Fatalf("Unexpected status code: %d", resp.StatusCode)
-// 		}
-
-// 		body, err := io.ReadAll(resp.Body)
-// 		if err != nil {
-// 			t.Fatalf("Failed to read response body: %v", err)
-// 		}
-
-// 		fmt.Printf("Files After Deletion:\n%s\n", body)
-
-// 		if strings.Contains(string(body), filename) {
-// 			t.Fatalf("Deleted file still found in file list")
-// 		}
-// 	})
-// }
+// 	} else {
+// 		server.send(400, "text/plain", "Name parameter missing");
+// 	}
+// });
 
 // // mongoDB
 // // //Connect to MongoDB

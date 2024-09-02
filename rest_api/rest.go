@@ -48,19 +48,18 @@ func init() {
 	}
 
 	db = client.Database(DatabaseName)
-}
 
-func OnHealthSubmit(ctx context.Context, w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
-		return
+	// Insert valid OTP and Serial Numbers
+	otpSerials := []interface{}{
+		ValidOTPSerial{OTP: "D4:8A:FC:9E:77:E0", SerialNumber: "ESP32-SN-001"},
+		ValidOTPSerial{OTP: "D4:8A:FC:9E:77:E1", SerialNumber: "ESP32-SN-002"},
+		ValidOTPSerial{OTP: "D4:8A:FC:9E:77:E2", SerialNumber: "ESP32-SN-003"},
+		// Add more as needed
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	if err := json.NewEncoder(w).Encode(HealthCheckResponse{Health: "OK"}); err != nil {
-		log.Printf("Failed to encode health response: %v", err)
-		http.Error(w, "Internal Server Error: Failed to encode health response", http.StatusInternalServerError)
+	_, err = db.Collection("valid_otp_serials").InsertMany(ctx, otpSerials)
+	if err != nil {
+		log.Printf("Failed to insert OTP and Serial Numbers: %v", err)
 	}
 }
 
@@ -77,6 +76,8 @@ func RegisterUser(ctx context.Context, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	log.Printf("Received registration request for username: %s with OTP: %s and Serial: %s", user.Username, user.OneTimePassword, user.SerialNumber)
+
 	var existingUser User
 	err := db.Collection(UsersCollection).FindOne(ctx, bson.M{"username": user.Username}).Decode(&existingUser)
 	if err == nil {
@@ -88,8 +89,17 @@ func RegisterUser(ctx context.Context, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if user.OneTimePassword != "valid_otp" || user.SerialNumber != "valid_serial" {
-		http.Error(w, "Invalid OTP or Serial Number", http.StatusUnauthorized)
+	// Check OTP and Serial Number
+	var validEntry ValidOTPSerial
+	err = db.Collection("valid_otp_serials").FindOne(ctx, bson.M{"otp": user.OneTimePassword, "serial_number": user.SerialNumber}).Decode(&validEntry)
+	if err != nil {
+		if err == mongo.ErrNoDocuments {
+			log.Printf("OTP and Serial Number not found in the database. OTP: %s, Serial: %s", user.OneTimePassword, user.SerialNumber)
+			http.Error(w, "Invalid OTP or Serial Number", http.StatusUnauthorized)
+		} else {
+			log.Printf("Failed to validate OTP and Serial Number: %v", err)
+			http.Error(w, "Internal Server Error: Failed to validate OTP and Serial Number", http.StatusInternalServerError)
+		}
 		return
 	}
 
@@ -111,6 +121,20 @@ func RegisterUser(ctx context.Context, w http.ResponseWriter, r *http.Request) {
 	if err := json.NewEncoder(w).Encode(map[string]string{"message": "User registered successfully"}); err != nil {
 		log.Printf("Failed to encode registration success message: %v", err)
 		http.Error(w, "Internal Server Error: Failed to respond with success message", http.StatusInternalServerError)
+	}
+}
+
+func OnHealthSubmit(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	if err := json.NewEncoder(w).Encode(HealthCheckResponse{Health: "OK"}); err != nil {
+		log.Printf("Failed to encode health response: %v", err)
+		http.Error(w, "Internal Server Error: Failed to encode health response", http.StatusInternalServerError)
 	}
 }
 

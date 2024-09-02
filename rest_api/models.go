@@ -24,3 +24,7 @@ type DownloadResponse struct {
 	SignedURL  string `json:"signedUrl"`
 	ObjectName string `json:"objectName"`
 }
+type ValidOTPSerial struct {
+	OTP          string `bson:"otp"`
+	SerialNumber string `bson:"serial_number"`
+}
