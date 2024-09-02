@@ -1,0 +1,180 @@
+swagger: "2.0"
+info:
+  version: "1.0.0"
+  title: MIDI File Server API
+  description: API for MIDI File Server
+host: "your.api.host"  # Replace with your actual host
+basePath: "/v1"
+schemes:
+  - "http"
+  - "https"
+paths:
+  /health:
+    post:
+      summary: "Health Check"
+      description: "Returns the health status of the API."
+      produces:
+        - "application/json"
+      responses:
+        200:
+          description: "Health check successful."
+          schema:
+            type: "object"
+            properties:
+              health:
+                type: "string"
+        500:
+          description: "Internal Server Error"
+
+  /register:
+    post:
+      summary: "Register a New User"
+      description: "Registers a new user in the system."
+      consumes:
+        - "application/json"
+      produces:
+        - "application/json"
+      parameters:
+        - in: "body"
+          name: "body"
+          description: "User details to register."
+          required: true
+          schema:
+            type: "object"
+            properties:
+              username:
+                type: "string"
+              password:
+                type: "string"
+              oneTimePassword:
+                type: "string"
+              serialNumber:
+                type: "string"
+      responses:
+        201:
+          description: "User registered successfully."
+        400:
+          description: "Invalid user data provided."
+        409:
+          description: "Username already taken."
+        401:
+          description: "Invalid OTP or Serial Number."
+        500:
+          description: "Internal Server Error"
+
+  /login:
+    post:
+      summary: "User Login"
+      description: "Logs a user into the system."
+      consumes:
+        - "application/json"
+      produces:
+        - "application/json"
+      parameters:
+        - in: "body"
+          name: "body"
+          description: "User login credentials."
+          required: true
+          schema:
+            type: "object"
+            properties:
+              username:
+                type: "string"
+              password:
+                type: "string"
+      responses:
+        200:
+          description: "Login successful."
+        400:
+          description: "Invalid login data."
+        401:
+          description: "Invalid credentials."
+        500:
+          description: "Internal Server Error"
+
+  /get-signed-url:
+    post:
+      summary: "Get Signed URL"
+      description: "Generates a signed URL for the specified MIDI file."
+      consumes:
+        - "application/json"
+      produces:
+        - "application/json"
+      parameters:
+        - in: "body"
+          name: "body"
+          description: "Request for signed URL."
+          required: true
+          schema:
+            type: "object"
+            properties:
+              objectName:
+                type: "array"
+                items:
+                  type: "string"
+      responses:
+        200:
+          description: "Signed URL generated successfully."
+          schema:
+            type: "array"
+            items:
+              type: "object"
+              properties:
+                signedURL:
+                  type: "string"
+                objectName:
+                  type: "string"
+        400:
+          description: "Invalid download request."
+        500:
+          description: "Internal Server Error"
+
+  /list-bucket:
+    get:
+      summary: "List Bucket Contents"
+      description: "Lists the contents of the specified bucket."
+      produces:
+        - "application/json"
+      responses:
+        200:
+          description: "Bucket contents listed successfully."
+          schema:
+            type: "array"
+            items:
+              type: "string"
+        500:
+          description: "Internal Server Error"
+definitions:
+  User:
+    type: "object"
+    properties:
+      username:
+        type: "string"
+      password:
+        type: "string"
+      oneTimePassword:
+        type: "string"
+      serialNumber:
+        type: "string"
+
+  SignedUrlRequest:
+    type: "object"
+    properties:
+      objectName:
+        type: "array"
+        items:
+          type: "string"
+
+  DownloadResponse:
+    type: "object"
+    properties:
+      signedURL:
+        type: "string"
+      objectName:
+        type: "string"
+
+  HealthCheckResponse:
+    type: "object"
+    properties:
+      health:
+        type: "string"

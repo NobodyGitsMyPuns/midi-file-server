@@ -77,6 +77,34 @@ push-docker:
 	@echo "Pushing Docker image to GCP..."
 	docker push $(DOCKER_IMAGE):latest
 
+.PHONY: build-openapi-docker
+build-openapi-docker:
+	@echo "Building OpenAPI Docker image..."
+	docker build --platform linux/amd64 -t gcr.io/gothic-oven-433521-e1/openapi-server:latest -f Dockerfile.openapi .
+
+.PHONY: push-openapi-docker
+push-openapi-docker:
+	@echo "Pushing OpenAPI Docker image to GCP..."
+	docker push gcr.io/gothic-oven-433521-e1/openapi-server:latest
+
+
+.PHONY: deploy-openapi
+deploy-openapi:
+	@echo "Deploying OpenAPI server to GCP..."
+	@if kubectl get deployment openapi-deployment; then \
+		kubectl delete deployment openapi-deployment; \
+	fi
+	kubectl apply -f $(K8S_DIR)/openapi-deployment.yaml
+	kubectl apply -f $(K8S_DIR)/openapi-service.yaml
+
+
+
+
+.PHONY: deploy-openapi-service
+deploy-openapi-service:
+	@echo "Deploying OpenAPI service to GCP..."
+	kubectl apply -f .k8/openapi-service.yaml
+
 .PHONY: deploy-mongo
 deploy-mongo:
 	@echo "Deploying MongoDB to GCP..."
@@ -99,7 +127,7 @@ redeploy-service: build-docker push-docker deploy-app
 	@echo "Service redeployed to GCP without affecting the database!"
 
 .PHONY: all
-all: clean get build test lint build-docker push-docker deploy-mongo deploy-app
+all: clean get build test lint build-docker push-docker deploy-mongo deploy-app build-openapi-docker push-openapi-docker deploy-openapi  deploy-openapi-service
 	@echo "Deployment complete!"
 
 .PHONY: deploy-service

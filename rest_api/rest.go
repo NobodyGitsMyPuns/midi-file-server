@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"cloud.google.com/go/storage"
-	"github.com/dgrijalva/jwt-go"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
@@ -164,22 +163,10 @@ func LoginUser(ctx context.Context, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-		"username": user.Username,
-		"exp":      time.Now().Add(72 * time.Hour).Unix(),
-	})
-
-	tokenString, err := token.SignedString([]byte(JWTSecretKey))
-	if err != nil {
-		log.Printf("Failed to sign JWT token: %v", err)
-		http.Error(w, "Internal Server Error: Failed to generate token", http.StatusInternalServerError)
-		return
-	}
-
 	w.WriteHeader(http.StatusOK)
-	if err := json.NewEncoder(w).Encode(map[string]string{"token": tokenString}); err != nil {
-		log.Printf("Failed to encode token response: %v", err)
-		http.Error(w, "Internal Server Error: Failed to respond with token", http.StatusInternalServerError)
+	if err := json.NewEncoder(w).Encode(map[string]string{"message": "Login successful"}); err != nil {
+		log.Printf("Failed to encode login success response: %v", err)
+		http.Error(w, "Internal Server Error: Failed to respond with success message", http.StatusInternalServerError)
 	}
 }
 
@@ -195,12 +182,13 @@ func GetSignedUrl(ctx context.Context, w http.ResponseWriter, r *http.Request) {
 	for _, currentObjectName := range reqs.ObjectName {
 
 		if currentObjectName == "" {
-			http.Error(w, "Missing midi object", http.StatusInternalServerError)
+			http.Error(w, "Missing midi object", http.StatusBadRequest)
 			return
 		}
 
 		signedURL, err := generateSignedURL(ctx, DefaultBucketName, currentObjectName)
 		if err != nil {
+			log.Printf("Failed to generate signed URL for object %s: %v", currentObjectName, err)
 			http.Error(w, fmt.Sprintf("Failed to generate signed URL: %v", err), http.StatusInternalServerError)
 			return
 		}
@@ -254,12 +242,14 @@ func ListBucketHandler(ctx context.Context, w http.ResponseWriter, r *http.Reque
 
 	objectNames, err := ListBucketContents(ctx, DefaultBucketName)
 	if err != nil {
+		log.Printf("Failed to list bucket contents: %v", err)
 		http.Error(w, fmt.Sprintf("Failed to list bucket contents: %v", err), http.StatusInternalServerError)
 		return
 	}
 
 	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(objectNames); err != nil {
+		log.Printf("Failed to encode bucket contents: %v", err)
 		http.Error(w, fmt.Sprintf("Failed to encode bucket contents: %v", err), http.StatusInternalServerError)
 	}
 }
