@@ -1,4 +1,4 @@
-# Load environment variables from .env file
+# Load environment variables from .env file if it exists
 ifneq (,$(wildcard ./.env))
     include .env
     export
@@ -15,13 +15,17 @@ GOTEST := $(GOCMD) test
 GOGET := $(GOCMD) get
 GOLINT := golangci-lint
 
-# Define variables
+# Define variables from environment
 DOCKER_IMAGE := $(DOCKER_IMAGE)
 MINIKUBE_PROFILE := minikube
 MINIKUBE_IMAGE := midi-file-server:latest
 GKE_CLUSTER_NAME := midi-cluster
 GKE_ZONE := $(GKE_ZONE)
 GKE_PROJECT := $(GKE_PROJECT)
+MONGODB_URI := $(MONGODB_URI)
+MIDI_BUCKET := $(MIDI_BUCKET)
+GOOGLE_APPLICATION_CREDENTIALS := $(GOOGLE_APPLICATION_CREDENTIALS)
+LOAD_BALANCER_IP := $(LOAD_BALANCER_IP)
 
 # Name of the executable
 BINARY_NAME := midi-file-server
@@ -29,7 +33,7 @@ BINARY_NAME := midi-file-server
 # Define variables for Google Cloud Secret Manager
 SECRET_NAME := my-service-account-secret
 SECRET_DATA := '{"client_email":"midi-server-admin@gothic-oven-433521-e1.iam.gserviceaccount.com"}'
-GCP_PROJECT := gothic-oven-433521-e1
+GCP_PROJECT := $(GKE_PROJECT)
 
 .PHONY: lint
 lint:
@@ -76,35 +80,7 @@ build-docker:
 push-docker:
 	@echo "Pushing Docker image to GCP..."
 	docker push $(DOCKER_IMAGE):latest
-
-.PHONY: build-openapi-docker
-build-openapi-docker:
-	@echo "Building OpenAPI Docker image..."
-	docker build --platform linux/amd64 -t gcr.io/gothic-oven-433521-e1/openapi-server:latest -f Dockerfile.openapi .
-
-.PHONY: push-openapi-docker
-push-openapi-docker:
-	@echo "Pushing OpenAPI Docker image to GCP..."
-	docker push gcr.io/gothic-oven-433521-e1/openapi-server:latest
-
-
-.PHONY: deploy-openapi
-deploy-openapi:
-	@echo "Deploying OpenAPI server to GCP..."
-	@if kubectl get deployment openapi-deployment; then \
-		kubectl delete deployment openapi-deployment; \
-	fi
-	kubectl apply -f $(K8S_DIR)/openapi-deployment.yaml
-	kubectl apply -f $(K8S_DIR)/openapi-service.yaml
-
-
-
-
-.PHONY: deploy-openapi-service
-deploy-openapi-service:
-	@echo "Deploying OpenAPI service to GCP..."
-	kubectl apply -f .k8/openapi-service.yaml
-
+	
 .PHONY: deploy-mongo
 deploy-mongo:
 	@echo "Deploying MongoDB to GCP..."
@@ -127,7 +103,7 @@ redeploy-service: build-docker push-docker deploy-app
 	@echo "Service redeployed to GCP without affecting the database!"
 
 .PHONY: all
-all: clean get build test lint build-docker push-docker deploy-mongo deploy-app build-openapi-docker push-openapi-docker deploy-openapi  deploy-openapi-service
+all: clean get build test lint build-docker push-docker deploy-mongo deploy-app 
 	@echo "Deployment complete!"
 
 .PHONY: deploy-service
@@ -180,10 +156,10 @@ full-rebuild-deploy-secret: create-secret clean get build test lint build-docker
 .PHONY: create-secret
 create-secret:
 	@echo "Creating or updating Kubernetes secret..."
-	kubectl create secret generic gcr-secret --from-file=gothic_key.json=/Users/jesselopez/Documents/repos/midi-file-server/gothic_key.json --dry-run=client -o yaml | kubectl apply -f -
+	kubectl create secret generic gcr-secret --from-file=gothic_key.json=$(GOOGLE_APPLICATION_CREDENTIALS) --dry-run=client -o yaml | kubectl apply -f -
 	@echo "Secret created or updated successfully."
 	@echo "Creating or updating Kubernetes secret..."
-	kubectl create secret generic signer-secret --from-file=signer.json=/Users/jesselopez/Documents/repos/midi-file-server/signer.json --dry-run=client -o yaml | kubectl apply -f -
+	kubectl create secret generic signer-secret --from-file=signer.json=$(GOOGLE_APPLICATION_CREDENTIALS) --dry-run=client -o yaml | kubectl apply -f -
 	@echo "Secret created or updated successfully."
 
 # Create Google Cloud Secret Manager Secret

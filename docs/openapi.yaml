@@ -129,9 +129,9 @@ paths:
         500:
           description: "Internal Server Error"
 
-  /list-bucket:
+  /list-available-midi-files:
     get:
-      summary: "List Bucket Contents"
+      summary: "List Available MIDI Files"
       description: "Lists the contents of the specified bucket."
       produces:
         - "application/json"
