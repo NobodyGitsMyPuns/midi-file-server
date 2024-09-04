@@ -4,7 +4,8 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"os"
+
+	utilities "midi-file-server/utilities" // Import utilities for WrapError
 
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -12,43 +13,42 @@ import (
 )
 
 var (
-	mongoDBURI = getEnv("MONGODB_URI", "mongodb://mongodb-service:27017")
+	ErrMongoDBConnection = fmt.Errorf("failed to connect to MongoDB")
+	ErrMongoDBPing       = fmt.Errorf("failed to ping MongoDB")
+	ErrMongoDBAddDemo    = fmt.Errorf("failed to add demo data")
+	ErrMongoDBDisconnect = fmt.Errorf("failed to disconnect from MongoDB")
+	ErrMongoDBListColls  = fmt.Errorf("failed to list collections")
+	ErrMongoDBCreateColl = fmt.Errorf("failed to create collection")
+	ErrMongoDBCreateIdx  = fmt.Errorf("failed to create index on collection")
+	ErrMongoDBInsertDemo = fmt.Errorf("failed to insert demo data")
 )
-
-// getEnv is a helper function to get environment variables with a default fallback.
-func getEnv(key, defaultValue string) string {
-	if value, exists := os.LookupEnv(key); exists {
-		return value
-	}
-	return defaultValue
-}
 
 // NewMongoDBClient creates a new instance of MongoDBClient.
 func NewMongoDBClient(ctx context.Context) *MongoDBClient {
 	return &MongoDBClient{
-		DatabaseName:    getEnv("DATABASE_NAME", "testdb"),
-		UsersCollection: getEnv("USERS_COLLECTION", "users"),
+		DatabaseName:    utilities.DatabaseName,
+		UsersCollection: utilities.UsersCollection,
 		Context:         ctx,
 	}
 }
 
 // Connect establishes a connection to MongoDB and assigns it to the MongoDBClient.
 func (m *MongoDBClient) Connect() error {
-	clientOptions := options.Client().ApplyURI(mongoDBURI)
+	clientOptions := options.Client().ApplyURI(utilities.MongoDBURI)
 	client, err := mongo.Connect(m.Context, clientOptions)
 	if err != nil {
-		return err
+		return utilities.WrapError(err, ErrMongoDBConnection, "Connecting to MongoDB")
 	}
 
 	if err = client.Ping(m.Context, nil); err != nil {
-		return err
+		return utilities.WrapError(err, ErrMongoDBPing, "Pinging MongoDB")
 	}
 
 	m.Client = client
 	fmt.Println("Connected to MongoDB!")
 	err = m.AddDemoData()
 	if err != nil {
-		return fmt.Errorf("failed to add demo data: %w", err)
+		return utilities.WrapError(err, ErrMongoDBAddDemo, "Adding demo data to MongoDB")
 	}
 	fmt.Println("Added demo data to MongoDB!")
 	return nil
@@ -70,13 +70,13 @@ func (m *MongoDBClient) VerifyDB() error {
 	database := m.Client.Database(m.DatabaseName)
 	collectionNames, err := database.ListCollectionNames(m.Context, bson.D{{Key: "name", Value: m.UsersCollection}})
 	if err != nil {
-		return fmt.Errorf("failed to list collections: %w", err)
+		return utilities.WrapError(err, ErrMongoDBListColls, fmt.Sprintf("Database: %s", m.DatabaseName))
 	}
 
 	if len(collectionNames) == 0 {
 		fmt.Printf("Creating '%s' collection...\n", m.UsersCollection)
 		if err := database.CreateCollection(m.Context, m.UsersCollection); err != nil {
-			return fmt.Errorf("failed to create '%s' collection: %w", m.UsersCollection, err)
+			return utilities.WrapError(err, ErrMongoDBCreateColl, fmt.Sprintf("Database: %s, Collection: %s", m.DatabaseName, m.UsersCollection))
 		}
 	} else {
 		fmt.Printf("'%s' collection already exists.\n", m.UsersCollection)
@@ -87,12 +87,13 @@ func (m *MongoDBClient) VerifyDB() error {
 		Options: options.Index().SetUnique(true),
 	}
 	if _, err := database.Collection(m.UsersCollection).Indexes().CreateOne(m.Context, indexModel); err != nil {
-		return fmt.Errorf("failed to create index on 'username' in collection '%s': %w", m.UsersCollection, err)
+		return utilities.WrapError(err, ErrMongoDBCreateIdx, fmt.Sprintf("Database: %s, Collection: %s", m.DatabaseName, m.UsersCollection))
 	}
 
 	fmt.Printf("Ensured that the '%s' database and '%s' collection exist.\n", m.DatabaseName, m.UsersCollection)
 	return nil
 }
+
 func (m *MongoDBClient) AddDemoData() error {
 	// Get the database instance from the client
 	db := m.Client.Database(m.DatabaseName)
@@ -107,7 +108,7 @@ func (m *MongoDBClient) AddDemoData() error {
 
 	_, err := db.Collection("valid_otp_serials").InsertMany(m.Context, otpSerials)
 	if err != nil {
-		return fmt.Errorf("failed to insert demo data: %w", err)
+		return utilities.WrapError(err, ErrMongoDBInsertDemo, "Inserting demo data into MongoDB")
 	}
 	return nil
 }
