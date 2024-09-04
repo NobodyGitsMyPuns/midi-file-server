@@ -36,7 +36,10 @@ var (
 )
 
 func main() {
-	mongoDB := mongodb.NewMongoDBClient()
+	timedContext, cancel := context.WithTimeout(context.Background(), ContextTimeout)
+	defer cancel()
+
+	mongoDB := mongodb.NewMongoDBClient(timedContext)
 
 	err := WrapError(mongoDB.Connect(), ErrMongoDBConnection)
 	if err != nil {
@@ -49,34 +52,27 @@ func main() {
 		log.Fatalf("Error: %v", err)
 	}
 
-	// Register handlers
-	http.HandleFunc(fmt.Sprintf("/%s/%s", VersionEp, HealthEp), withTimeout(restapi.OnHealthSubmit))
-	http.HandleFunc(fmt.Sprintf("/%s/%s", VersionEp, GetSignedUrl), withTimeout(restapi.GetSignedUrl))
-	http.HandleFunc(fmt.Sprintf("/%s/%s", VersionEp, ListAvailableMidiBuckets), withTimeout(restapi.ListBucketHandler))
-	http.HandleFunc(fmt.Sprintf("/%s/%s", VersionEp, RegisterEp), withTimeout(restapi.RegisterUser))
-	http.HandleFunc(fmt.Sprintf("/%s/%s", VersionEp, LoginEp), withTimeout(restapi.LoginUser))
+	// Register handlers with the shared context
+	http.HandleFunc(fmt.Sprintf("/%s/%s", VersionEp, HealthEp), withTimeout(timedContext, restapi.OnHealthSubmit))
+	http.HandleFunc(fmt.Sprintf("/%s/%s", VersionEp, GetSignedUrl), withTimeout(timedContext, restapi.GetSignedUrl))
+	http.HandleFunc(fmt.Sprintf("/%s/%s", VersionEp, ListAvailableMidiBuckets), withTimeout(timedContext, restapi.ListBucketHandler))
+	http.HandleFunc(fmt.Sprintf("/%s/%s", VersionEp, RegisterEp), withTimeout(timedContext, restapi.RegisterUser))
+	http.HandleFunc(fmt.Sprintf("/%s/%s", VersionEp, LoginEp), withTimeout(timedContext, restapi.LoginUser))
 
 	log.Fatal(http.ListenAndServe(":8080", nil))
 }
 
-// WrapError wraps a custom error around an original error, preserving the custom error type for testing
-func WrapError(err error, customErr error) error {
-	if err != nil {
-		return fmt.Errorf("%w: %v", customErr, err)
-	}
-	return nil
-}
-
-func withTimeout(handler func(context.Context, http.ResponseWriter, *http.Request)) http.HandlerFunc {
+// Modified withTimeout to accept an external context
+func withTimeout(parentCtx context.Context, handler func(context.Context, http.ResponseWriter, *http.Request)) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		timedContext, cancel := context.WithTimeout(r.Context(), ContextTimeout)
+		timedContext, cancel := context.WithTimeout(parentCtx, ContextTimeout)
 		defer cancel()
 		handler(timedContext, w, r)
 	}
 }
 
-func InitGCPWithServiceAccount(serviceAccountID, keyFilePath string) (*storage.Client, error) {
-	ctx := context.Background()
+// Modified InitGCPWithServiceAccount to accept a context
+func InitGCPWithServiceAccount(ctx context.Context, serviceAccountID, keyFilePath string) (*storage.Client, error) {
 	client, err := storage.NewClient(ctx, option.WithCredentialsFile(keyFilePath))
 	if err != nil {
 		return nil, WrapError(err, ErrGCPStorage)
@@ -86,9 +82,8 @@ func InitGCPWithServiceAccount(serviceAccountID, keyFilePath string) (*storage.C
 	return client, nil
 }
 
-// UploadFiles uploads files to a GCP bucket
-func UploadFiles(bucketName, prefix string, filePaths []string) error {
-	ctx := context.Background()
+// UploadFiles modified to accept a context and pass it through
+func UploadFiles(ctx context.Context, bucketName, prefix string, filePaths []string) error {
 	client, err := storage.NewClient(ctx)
 	if err != nil {
 		return WrapError(err, ErrGCPStorage)
@@ -117,5 +112,13 @@ func UploadFiles(bucketName, prefix string, filePaths []string) error {
 		fmt.Printf("File %s uploaded successfully to bucket %s\n", fileName, bucketName)
 	}
 
+	return nil
+}
+
+// WrapError wraps a custom error around an original error, preserving the custom error type for testing
+func WrapError(err error, customErr error) error {
+	if err != nil {
+		return fmt.Errorf("%w: %v", customErr, err)
+	}
 	return nil
 }

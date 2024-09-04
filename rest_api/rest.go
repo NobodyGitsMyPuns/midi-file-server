@@ -12,7 +12,6 @@ import (
 	"cloud.google.com/go/storage"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
 	"golang.org/x/crypto/bcrypt"
 	"golang.org/x/oauth2/google"
 	"google.golang.org/api/iterator"
@@ -30,31 +29,6 @@ var (
 	usersCollection   = getEnv("USERS_COLLECTION", "users")
 	defaultBucketName = getEnv("DEFAULT_BUCKET_NAME", "midi_file_storage")
 )
-
-func init() {
-	var err error
-	ctx := context.Background()
-
-	client, err = mongo.Connect(ctx, options.Client().ApplyURI(mongoDBURI))
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	db = client.Database(databaseName)
-
-	// Insert valid OTP and Serial Numbers
-	otpSerials := []interface{}{
-		ValidOTPSerial{OTP: "D4:8A:FC:9E:77:E0", SerialNumber: "ESP32-SN-001"},
-		ValidOTPSerial{OTP: "D4:8A:FC:9E:77:E1", SerialNumber: "ESP32-SN-002"},
-		ValidOTPSerial{OTP: "D4:8A:FC:9E:77:E2", SerialNumber: "ESP32-SN-003"},
-		// Add more as needed
-	}
-
-	_, err = db.Collection("valid_otp_serials").InsertMany(ctx, otpSerials)
-	if err != nil {
-		log.Printf("Failed to insert OTP and Serial Numbers: %v", err)
-	}
-}
 
 func RegisterUser(ctx context.Context, w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
@@ -81,7 +55,10 @@ func RegisterUser(ctx context.Context, w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Internal Server Error: Failed to check existing user", http.StatusInternalServerError)
 		return
 	}
-
+	type ValidOTPSerial struct {
+		OTP          string `bson:"otp"`
+		SerialNumber string `bson:"serial_number"`
+	}
 	// Check OTP and Serial Number
 	var validEntry ValidOTPSerial
 	err = db.Collection("valid_otp_serials").FindOne(ctx, bson.M{"otp": user.OneTimePassword, "serial_number": user.SerialNumber}).Decode(&validEntry)

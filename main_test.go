@@ -54,29 +54,24 @@ func TestFileUploadError(t *testing.T) {
 func TestHealthEndpoint(t *testing.T) {
 	// Create a request to pass to our handler.
 	req, err := http.NewRequest("POST", "/v1/health", nil)
-	if err != nil {
-		t.Fatalf("Could not create request: %v", err)
-	}
+	require.NoError(t, err, "Could not create request")
 
 	// Record the response.
 	rec := httptest.NewRecorder()
 
 	// Wrap the handler with a timeout (as done in main.go)
-	handler := withTimeout(func(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+	ctx := context.TODO()
+	handler := withTimeout(ctx, func(ctx context.Context, w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		_, err := w.Write([]byte(`{"status":"ok"}`))
-		require.NoError(t, err)
+		require.NoError(t, err, "Could not write response")
 	})
 	handler(rec, req)
 
 	// Check the status code is 200
-	if status := rec.Code; status != http.StatusOK {
-		t.Errorf("handler returned wrong status code: got %v want %v", status, http.StatusOK)
-	}
+	require.Equal(t, http.StatusOK, rec.Code, "handler returned wrong status code")
 
 	// Check the response body is what we expect.
 	expected := `{"status":"ok"}`
-	if rec.Body.String() != expected {
-		t.Errorf("handler returned unexpected body: got %v want %v", rec.Body.String(), expected)
-	}
+	require.Equal(t, expected, rec.Body.String(), "handler returned unexpected body")
 }
