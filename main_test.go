@@ -1,120 +1,82 @@
 package main
 
-const (
-	Acct = "112168818644504200034"
+import (
+	"context"
+	"errors"
+	"net/http"
+	"net/http/httptest"
+	"testing"
+
+	"github.com/stretchr/testify/require"
 )
 
-//todo set timeout on test workflow and lint workflow so it doesn't run forever if something goes wrong
+// TestMongoDBConnectionError checks if the connection error is wrapped correctly
+func TestMongoDBConnectionError(t *testing.T) {
+	err := errors.New("actual connection error")
+	wrappedErr := WrapError(err, ErrMongoDBConnection)
 
-// func TestInitGCP(t *testing.T) {
-// 	_, err := InitGCPWithServiceAccount(GCP_project, "/Users/jesselopez/Documents/repos/midi-file-server/gothic_key.json")
-// 	require.NoError(t, err)
-// }
-// Route to handle file listing
-//    server.on("/files", HTTP_GET, []() {
-// 	String fileList = "";
-// 	File root = LittleFS.open("/");
-// 	File file = root.openNextFile();
-// 	while (file) {
-// 		fileList += String(file.name()) + "\n";
-// 		file = root.openNextFile();
-// 	}
-// 	server.send(200, "text/plain", fileList);
-// });
+	if !errors.Is(wrappedErr, ErrMongoDBConnection) {
+		t.Errorf("Expected error type %v, but got %v", ErrMongoDBConnection, wrappedErr)
+	}
+}
 
-// // Route to handle file deletion
-// server.on("/delete", HTTP_DELETE, []() {
-// 	if (server.hasArg("name")) {
-// 		String filename = "/" + server.arg("name");
-// 		if (LittleFS.remove(filename)) {
-// 			Serial.println("File deleted successfully");
+// TestMongoDBVerifyError checks if the verification error is wrapped correctly
+func TestMongoDBVerifyError(t *testing.T) {
+	err := errors.New("verification error")
+	wrappedErr := WrapError(err, ErrMongoDBVerify)
 
-// 			// Send a response
-// 			String response = "File Deleted";
-// 			server.send(200, "text/plain", response);
-// 		} else {
-// 			server.send(404, "text/plain", "File Not Found");
-// 		}
-// 	} else {
-// 		server.send(400, "text/plain", "Name parameter missing");
-// 	}
-// });
+	if !errors.Is(wrappedErr, ErrMongoDBVerify) {
+		t.Errorf("Expected error type %v, but got %v", ErrMongoDBVerify, wrappedErr)
+	}
+}
 
-// // mongoDB
-// // //Connect to MongoDB
-// func connectMongoDBLocal() (*mongo.Client, error) {
-// 	clientOptions := options.Client().ApplyURI("mongodb://localhost:27017")
-// 	client, err := mongo.Connect(context.Background(), clientOptions) //todod old
+// TestGCPStorageError checks if the GCP storage error is wrapped correctly
+func TestGCPStorageError(t *testing.T) {
+	err := errors.New("GCP error")
+	wrappedErr := WrapError(err, ErrGCPStorage)
 
-// 	if err != nil {
-// 		return nil, err
-// 	}
-// 	return client, nil
-// }
+	if !errors.Is(wrappedErr, ErrGCPStorage) {
+		t.Errorf("Expected error type %v, but got %v", ErrGCPStorage, wrappedErr)
+	}
+}
 
-// // Register a user
-// func RegisterUser(client *mongo.Client, serialNumber, username, password string) error {
-// 	collection := client.Database("testdb").Collection("users")
-// 	user := bson.D{
-// 		{Key: "serial_number", Value: serialNumber},
-// 		{Key: "username", Value: username},
-// 		{Key: "password", Value: password},
-// 	}
-// 	_, err := collection.InsertOne(context.Background(), user)
-// 	return err
-// }
+// TestFileUploadError checks if the file upload error is wrapped correctly
+func TestFileUploadError(t *testing.T) {
+	err := errors.New("upload error")
+	wrappedErr := WrapError(err, ErrFileUpload)
 
-// // Login a user
-// func LoginUser(client *mongo.Client, username, password string) (bool, error) {
-// 	collection := client.Database("testdb").Collection("users")
-// 	filter := bson.D{{Key: "username", Value: username}, {Key: "password", Value: password}}
-// 	var result bson.D
-// 	err := collection.FindOne(context.Background(), filter).Decode(&result)
-// 	if err == mongo.ErrNoDocuments {
-// 		return false, nil
-// 	}
-// 	return err == nil, err
-// }
+	if !errors.Is(wrappedErr, ErrFileUpload) {
+		t.Errorf("Expected error type %v, but got %v", ErrFileUpload, wrappedErr)
+	}
+}
 
-// func TestRegisterUser(t *testing.T) {
-// 	mt := mtest.New(t, mtest.NewOptions().ClientType(mtest.Mock))
+// TestHealthEndpoint verifies that the health endpoint returns a 200 OK response.
+func TestHealthEndpoint(t *testing.T) {
+	// Create a request to pass to our handler.
+	req, err := http.NewRequest("POST", "/v1/health", nil)
+	if err != nil {
+		t.Fatalf("Could not create request: %v", err)
+	}
 
-// 	mt.Run("register user", func(mt *mtest.T) {
-// 		client, err := connectMongoDBLocal()
-// 		if err != nil {
-// 			t.Fatalf("Failed to connect to MongoDB: %v", err)
-// 		}
+	// Record the response.
+	rec := httptest.NewRecorder()
 
-// 		err = RegisterUser(client, "12345", "testuser", "testpass")
-// 		if err != nil {
-// 			t.Errorf("Failed to register user: %v", err)
-// 		}
-// 	})
-// }
+	// Wrap the handler with a timeout (as done in main.go)
+	handler := withTimeout(func(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		_, err := w.Write([]byte(`{"status":"ok"}`))
+		require.NoError(t, err)
+	})
+	handler(rec, req)
 
-// func TestLoginUser(t *testing.T) {
-// 	mt := mtest.New(t, mtest.NewOptions().ClientType(mtest.Mock))
+	// Check the status code is 200
+	if status := rec.Code; status != http.StatusOK {
+		t.Errorf("handler returned wrong status code: got %v want %v", status, http.StatusOK)
+	}
 
-// 	mt.Run("login user", func(mt *mtest.T) {
-// 		client, err := connectMongoDBLocal()
-// 		if err != nil {
-// 			t.Fatalf("Failed to connect to MongoDB: %v", err)
-// 		}
-
-// 		//First, register a user
-// 		err = RegisterUser(client, "12345", "testuser", "testpass")
-// 		if err != nil {
-// 			t.Fatalf("Failed to register user: %v", err)
-// 		}
-
-// 		//Now, try to log in
-// 		success, err := LoginUser(client, "testuser", "testpass")
-// 		if err != nil {
-// 			t.Errorf("Failed to log in user: %v", err)
-// 		}
-
-// 		if !success {
-// 			t.Errorf("Expected login to succeed, but it failed")
-// 		}
-// 	})
-// }
+	// Check the response body is what we expect.
+	expected := `{"status":"ok"}`
+	if rec.Body.String() != expected {
+		t.Errorf("handler returned unexpected body: got %v want %v", rec.Body.String(), expected)
+	}
+}

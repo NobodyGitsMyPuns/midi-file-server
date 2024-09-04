@@ -1,2 +1,0 @@
-kubectl logs openapi-deployment-7cff6ccd48-rpl4z --previous
-

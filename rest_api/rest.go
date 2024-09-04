@@ -19,34 +19,28 @@ import (
 )
 
 const (
-	MongoDBURI        = "mongodb://mongodb-service:27017"
-	DatabaseName      = "testdb"
-	UsersCollection   = "users"
-	JWTSecretKey      = "your-secret-key"
-	URLExpiration     = 5 * time.Minute
-	DefaultBucketName = "midi_file_storage"
+	URLExpiration = 5 * time.Minute
 )
 
 var (
-	client *mongo.Client
-	db     *mongo.Database
+	client            *mongo.Client
+	db                *mongo.Database
+	mongoDBURI        = getEnv("MONGODB_URI", "mongodb://mongodb-service:27017")
+	databaseName      = getEnv("DATABASE_NAME", "testdb")
+	usersCollection   = getEnv("USERS_COLLECTION", "users")
+	defaultBucketName = getEnv("DEFAULT_BUCKET_NAME", "midi_file_storage")
 )
 
 func init() {
 	var err error
 	ctx := context.Background()
 
-	mongoURI := os.Getenv("MONGODB_URI")
-	if mongoURI == "" {
-		mongoURI = MongoDBURI
-	}
-
-	client, err = mongo.Connect(ctx, options.Client().ApplyURI(mongoURI))
+	client, err = mongo.Connect(ctx, options.Client().ApplyURI(mongoDBURI))
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	db = client.Database(DatabaseName)
+	db = client.Database(databaseName)
 
 	// Insert valid OTP and Serial Numbers
 	otpSerials := []interface{}{
@@ -78,7 +72,7 @@ func RegisterUser(ctx context.Context, w http.ResponseWriter, r *http.Request) {
 	log.Printf("Received registration request for username: %s with OTP: %s and Serial: %s", user.Username, user.OneTimePassword, user.SerialNumber)
 
 	var existingUser User
-	err := db.Collection(UsersCollection).FindOne(ctx, bson.M{"username": user.Username}).Decode(&existingUser)
+	err := db.Collection(usersCollection).FindOne(ctx, bson.M{"username": user.Username}).Decode(&existingUser)
 	if err == nil {
 		http.Error(w, "Username already taken", http.StatusConflict)
 		return
@@ -110,7 +104,7 @@ func RegisterUser(ctx context.Context, w http.ResponseWriter, r *http.Request) {
 	}
 	user.Password = string(hashedPassword)
 
-	if _, err := db.Collection(UsersCollection).InsertOne(ctx, user); err != nil {
+	if _, err := db.Collection(usersCollection).InsertOne(ctx, user); err != nil {
 		log.Printf("Failed to insert user into MongoDB: %v", err)
 		http.Error(w, "Internal Server Error: Failed to register user", http.StatusInternalServerError)
 		return
@@ -151,7 +145,7 @@ func LoginUser(ctx context.Context, w http.ResponseWriter, r *http.Request) {
 	}
 
 	var dbUser User
-	if err := db.Collection(UsersCollection).FindOne(ctx, bson.M{"username": user.Username}).Decode(&dbUser); err != nil {
+	if err := db.Collection(usersCollection).FindOne(ctx, bson.M{"username": user.Username}).Decode(&dbUser); err != nil {
 		log.Printf("Failed to find user in MongoDB: %v", err)
 		http.Error(w, "Invalid credentials", http.StatusUnauthorized)
 		return
@@ -186,7 +180,7 @@ func GetSignedUrl(ctx context.Context, w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		signedURL, err := generateSignedURL(ctx, DefaultBucketName, currentObjectName)
+		signedURL, err := generateSignedURL(ctx, defaultBucketName, currentObjectName)
 		if err != nil {
 			log.Printf("Failed to generate signed URL for object %s: %v", currentObjectName, err)
 			http.Error(w, fmt.Sprintf("Failed to generate signed URL: %v", err), http.StatusInternalServerError)
@@ -240,7 +234,7 @@ func generateSignedURL(ctx context.Context, bucketName, objectName string) (stri
 
 func ListBucketHandler(ctx context.Context, w http.ResponseWriter, r *http.Request) {
 
-	objectNames, err := ListBucketContents(ctx, DefaultBucketName)
+	objectNames, err := ListBucketContents(ctx, defaultBucketName)
 	if err != nil {
 		log.Printf("Failed to list bucket contents: %v", err)
 		http.Error(w, fmt.Sprintf("Failed to list bucket contents: %v", err), http.StatusInternalServerError)
@@ -276,4 +270,11 @@ func ListBucketContents(ctx context.Context, bucketName string) ([]string, error
 	}
 
 	return objectNames, nil
+}
+
+func getEnv(key, defaultValue string) string {
+	if value, exists := os.LookupEnv(key); exists {
+		return value
+	}
+	return defaultValue
 }
