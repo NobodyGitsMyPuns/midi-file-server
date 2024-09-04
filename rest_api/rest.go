@@ -22,10 +22,7 @@ const (
 )
 
 var (
-	client            *mongo.Client
 	db                *mongo.Database
-	mongoDBURI        = getEnv("MONGODB_URI", "mongodb://mongodb-service:27017")
-	databaseName      = getEnv("DATABASE_NAME", "testdb")
 	usersCollection   = getEnv("USERS_COLLECTION", "users")
 	defaultBucketName = getEnv("DEFAULT_BUCKET_NAME", "midi_file_storage")
 )
