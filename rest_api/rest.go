@@ -5,13 +5,13 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"os"
 	"time"
 
 	mongodb "midi-file-server/mongo_db"
-	"midi-file-server/utilities"
 
 	"github.com/rs/zerolog/log"
+
+	utilities "midi-file-server/utilities"
 
 	"cloud.google.com/go/storage"
 	"go.mongodb.org/mongo-driver/bson"
@@ -31,98 +31,96 @@ var (
 	ErrFailedListBucket        = fmt.Errorf("failed to list bucket contents")
 	ErrFailedGenerateSignedURL = fmt.Errorf("failed to generate signed URL")
 	ErrMethodNotAllowed        = fmt.Errorf("method not allowed")
-	usersCollection            = getEnv("USERS_COLLECTION", "users")
-	defaultBucketName          = getEnv("DEFAULT_BUCKET_NAME", "midi_file_storage")
 )
 
 func RegisterUser(ctx context.Context, db *mongo.Database, w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
-		logErrorAndRespond(w, ErrMethodNotAllowed.Error(), http.StatusMethodNotAllowed)
+		utilities.LogErrorAndRespond(w, ErrMethodNotAllowed.Error(), http.StatusMethodNotAllowed)
 		return
 	}
 
 	user, err := decodeUser(r)
 	if err != nil {
-		logErrorAndRespond(w, utilities.WrapError(err, fmt.Errorf("invalid user data")).Error(), http.StatusBadRequest)
+		utilities.LogErrorAndRespond(w, utilities.WrapError(err, fmt.Errorf("invalid user data")).Error(), http.StatusBadRequest)
 		return
 	}
 
 	log.Info().Str("username", user.Username).Str("otp", user.OneTimePassword).Str("serial", user.SerialNumber).Msg("Received registration request")
 
 	if userExists(ctx, db, user.Username) {
-		logErrorAndRespond(w, ErrUserExists.Error(), http.StatusConflict)
+		utilities.LogErrorAndRespond(w, ErrUserExists.Error(), http.StatusConflict)
 		return
 	}
 
 	if !validateOTPAndSerial(ctx, db, user.OneTimePassword, user.SerialNumber) {
-		logErrorAndRespond(w, ErrInvalidOTPSerial.Error(), http.StatusUnauthorized)
+		utilities.LogErrorAndRespond(w, ErrInvalidOTPSerial.Error(), http.StatusUnauthorized)
 		return
 	}
 
 	hashedPassword, err := hashPassword(user.Password)
 	if err != nil {
-		logErrorAndRespond(w, utilities.WrapError(err, ErrFailedHashPassword).Error(), http.StatusInternalServerError)
+		utilities.LogErrorAndRespond(w, utilities.WrapError(err, ErrFailedHashPassword).Error(), http.StatusInternalServerError)
 		return
 	}
 	user.Password = hashedPassword
 
 	if err := insertUser(ctx, db, user); err != nil {
-		logErrorAndRespond(w, utilities.WrapError(err, ErrFailedRegisterUser).Error(), http.StatusInternalServerError)
+		utilities.LogErrorAndRespond(w, utilities.WrapError(err, ErrFailedRegisterUser).Error(), http.StatusInternalServerError)
 		return
 	}
 
 	w.WriteHeader(http.StatusCreated)
 	if err := json.NewEncoder(w).Encode(map[string]string{"message": "User registered successfully"}); err != nil {
-		logErrorAndRespond(w, utilities.WrapError(err, fmt.Errorf("failed to respond with success message")).Error(), http.StatusInternalServerError)
+		utilities.LogErrorAndRespond(w, utilities.WrapError(err, fmt.Errorf("failed to respond with success message")).Error(), http.StatusInternalServerError)
 	}
 }
 
 func OnHealthSubmit(ctx context.Context, w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
-		logErrorAndRespond(w, ErrMethodNotAllowed.Error(), http.StatusMethodNotAllowed)
+		utilities.LogErrorAndRespond(w, ErrMethodNotAllowed.Error(), http.StatusMethodNotAllowed)
 		return
 	}
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	if err := json.NewEncoder(w).Encode(HealthCheckResponse{Health: "OK"}); err != nil {
-		logErrorAndRespond(w, utilities.WrapError(err, fmt.Errorf("failed to encode health response")).Error(), http.StatusInternalServerError)
+		utilities.LogErrorAndRespond(w, utilities.WrapError(err, fmt.Errorf("failed to encode health response")).Error(), http.StatusInternalServerError)
 	}
 }
 
 func LoginUser(ctx context.Context, db *mongo.Database, w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
-		logErrorAndRespond(w, ErrMethodNotAllowed.Error(), http.StatusMethodNotAllowed)
+		utilities.LogErrorAndRespond(w, ErrMethodNotAllowed.Error(), http.StatusMethodNotAllowed)
 		return
 	}
 
 	var user User
 	if err := json.NewDecoder(r.Body).Decode(&user); err != nil {
-		logErrorAndRespond(w, utilities.WrapError(err, fmt.Errorf("invalid user data")).Error(), http.StatusBadRequest)
+		utilities.LogErrorAndRespond(w, utilities.WrapError(err, fmt.Errorf("invalid user data")).Error(), http.StatusBadRequest)
 		return
 	}
 
 	var dbUser User
-	if err := db.Collection(usersCollection).FindOne(ctx, bson.M{"username": user.Username}).Decode(&dbUser); err != nil {
-		logErrorAndRespond(w, utilities.WrapError(err, ErrInvalidCredentials).Error(), http.StatusUnauthorized)
+	if err := db.Collection(utilities.UsersCollection).FindOne(ctx, bson.M{"username": user.Username}).Decode(&dbUser); err != nil {
+		utilities.LogErrorAndRespond(w, utilities.WrapError(err, ErrInvalidCredentials).Error(), http.StatusUnauthorized)
 		return
 	}
 
 	if err := bcrypt.CompareHashAndPassword([]byte(dbUser.Password), []byte(user.Password)); err != nil {
-		logErrorAndRespond(w, utilities.WrapError(err, ErrInvalidCredentials).Error(), http.StatusUnauthorized)
+		utilities.LogErrorAndRespond(w, utilities.WrapError(err, ErrInvalidCredentials).Error(), http.StatusUnauthorized)
 		return
 	}
 
 	w.WriteHeader(http.StatusOK)
 	if err := json.NewEncoder(w).Encode(map[string]string{"message": "Login successful"}); err != nil {
-		logErrorAndRespond(w, utilities.WrapError(err, fmt.Errorf("failed to respond with success message")).Error(), http.StatusInternalServerError)
+		utilities.LogErrorAndRespond(w, utilities.WrapError(err, fmt.Errorf("failed to respond with success message")).Error(), http.StatusInternalServerError)
 	}
 }
 
 func GetSignedUrl(ctx context.Context, w http.ResponseWriter, r *http.Request, d time.Duration) {
 	var reqs SignedUrlRequest
 	if err := json.NewDecoder(r.Body).Decode(&reqs); err != nil {
-		logErrorAndRespond(w, utilities.WrapError(err, fmt.Errorf("invalid download request")).Error(), http.StatusBadRequest)
+		utilities.LogErrorAndRespond(w, utilities.WrapError(err, fmt.Errorf("invalid download request")).Error(), http.StatusBadRequest)
 		return
 	}
 
@@ -130,13 +128,13 @@ func GetSignedUrl(ctx context.Context, w http.ResponseWriter, r *http.Request, d
 
 	for _, currentObjectName := range reqs.ObjectName {
 		if currentObjectName == "" {
-			logErrorAndRespond(w, "Missing midi object", http.StatusBadRequest)
+			utilities.LogErrorAndRespond(w, "Missing midi object", http.StatusBadRequest)
 			return
 		}
 
-		signedURL, err := generateSignedURL(ctx, defaultBucketName, currentObjectName, d)
+		signedURL, err := generateSignedURL(ctx, utilities.DefaultBucketName, currentObjectName, d)
 		if err != nil {
-			logErrorAndRespond(w, utilities.WrapError(err, ErrFailedGenerateSignedURL).Error(), http.StatusInternalServerError)
+			utilities.LogErrorAndRespond(w, utilities.WrapError(err, ErrFailedGenerateSignedURL).Error(), http.StatusInternalServerError)
 			return
 		}
 
@@ -148,31 +146,31 @@ func GetSignedUrl(ctx context.Context, w http.ResponseWriter, r *http.Request, d
 
 	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(responsePayload); err != nil {
-		logErrorAndRespond(w, utilities.WrapError(err, fmt.Errorf("failed to respond with signed URL")).Error(), http.StatusInternalServerError)
+		utilities.LogErrorAndRespond(w, utilities.WrapError(err, fmt.Errorf("failed to respond with signed URL")).Error(), http.StatusInternalServerError)
 	}
 }
 
 func ListBucketHandler(ctx context.Context, w http.ResponseWriter, r *http.Request) {
-	objectNames, err := ListBucketContents(ctx, defaultBucketName)
+	objectNames, err := ListBucketContents(ctx, utilities.DefaultBucketName)
 	if err != nil {
-		logErrorAndRespond(w, utilities.WrapError(err, ErrFailedListBucket).Error(), http.StatusInternalServerError)
+		utilities.LogErrorAndRespond(w, utilities.WrapError(err, ErrFailedListBucket).Error(), http.StatusInternalServerError)
 		return
 	}
 
 	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(objectNames); err != nil {
-		logErrorAndRespond(w, utilities.WrapError(err, fmt.Errorf("failed to encode bucket contents")).Error(), http.StatusInternalServerError)
+		utilities.LogErrorAndRespond(w, utilities.WrapError(err, fmt.Errorf("failed to encode bucket contents")).Error(), http.StatusInternalServerError)
 	}
 }
 
 func generateSignedURL(ctx context.Context, bucketName, objectName string, d time.Duration) (string, error) {
 	creds, err := google.FindDefaultCredentials(ctx, storage.ScopeReadOnly)
 	if err != nil {
-		return "", fmt.Errorf("failed to find default credentials: %w", err)
+		return "", utilities.WrapError(err, fmt.Errorf("failed to find default credentials"))
 	}
 
 	if err := json.Unmarshal(creds.JSON, &UserCredentials); err != nil {
-		return "", fmt.Errorf("failed to parse credentials JSON: %w", err)
+		return "", utilities.WrapError(err, fmt.Errorf("failed to parse credentials JSON"))
 	}
 
 	opts := &storage.SignedURLOptions{
@@ -185,7 +183,7 @@ func generateSignedURL(ctx context.Context, bucketName, objectName string, d tim
 
 	url, err := storage.SignedURL(bucketName, objectName, opts)
 	if err != nil {
-		return "", fmt.Errorf("failed to create signed URL: %w", err)
+		return "", utilities.WrapError(err, fmt.Errorf("failed to create signed URL"))
 	}
 
 	return url, nil
@@ -194,7 +192,7 @@ func generateSignedURL(ctx context.Context, bucketName, objectName string, d tim
 func ListBucketContents(ctx context.Context, bucketName string) ([]string, error) {
 	client, err := storage.NewClient(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create client: %w", err)
+		return nil, utilities.WrapError(err, fmt.Errorf("failed to create client"))
 	}
 	defer client.Close()
 
@@ -206,7 +204,7 @@ func ListBucketContents(ctx context.Context, bucketName string) ([]string, error
 			break
 		}
 		if err != nil {
-			return nil, fmt.Errorf("failed to list objects: %w", err)
+			return nil, utilities.WrapError(err, fmt.Errorf("failed to list objects"))
 		}
 		objectNames = append(objectNames, attrs.Name)
 	}
@@ -214,24 +212,11 @@ func ListBucketContents(ctx context.Context, bucketName string) ([]string, error
 	return objectNames, nil
 }
 
-func logErrorAndRespond(w http.ResponseWriter, message string, statusCode int) {
-	log.Error().Int("status_code", statusCode).Msg(message)
-	http.Error(w, message, statusCode)
-}
-
-func getEnv(key, defaultValue string) string {
-	if value, exists := os.LookupEnv(key); exists {
-		return value
-	}
-	return defaultValue
-}
-
 // decodeUser decodes the incoming request into a User struct
 func decodeUser(r *http.Request) (User, error) {
 	var user User
 	if err := json.NewDecoder(r.Body).Decode(&user); err != nil {
-		log.Error().Err(err).Msg("Failed to decode user data")
-		return user, err
+		return user, utilities.WrapError(err, fmt.Errorf("failed to decode user data"))
 	}
 	return user, nil
 }
@@ -239,7 +224,7 @@ func decodeUser(r *http.Request) (User, error) {
 // userExists checks if the username already exists in the database
 func userExists(ctx context.Context, db *mongo.Database, username string) bool {
 	var existingUser User
-	err := db.Collection(usersCollection).FindOne(ctx, bson.M{"username": username}).Decode(&existingUser)
+	err := db.Collection(utilities.UsersCollection).FindOne(ctx, bson.M{"username": username}).Decode(&existingUser)
 	if err == nil {
 		return true
 	} else if err != mongo.ErrNoDocuments {
@@ -276,7 +261,7 @@ func hashPassword(password string) (string, error) {
 
 // insertUser inserts a new user into the database
 func insertUser(ctx context.Context, db *mongo.Database, user User) error {
-	_, err := db.Collection(usersCollection).InsertOne(ctx, user)
+	_, err := db.Collection(utilities.UsersCollection).InsertOne(ctx, user)
 	if err != nil {
 		log.Error().Err(err).Str("username", user.Username).Msg("Failed to insert user into MongoDB")
 		return err
