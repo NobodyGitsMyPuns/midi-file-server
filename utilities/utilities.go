@@ -15,7 +15,7 @@ import (
 var ()
 
 var (
-	HTTP_CONTEXT_TIMEOUT          = GetEnv("HTTP_CONTEXT_TIMEOUT", "1")
+	HTTP_CONTEXT_TIMEOUT          = GetEnv("HTTP_CONTEXT_TIMEOUT", "2")
 	MongoDBURI                    = GetEnv("MONGODB_URI", "mongodb://mongodb-service:27017")
 	DatabaseName                  = GetEnv("DATABASE_NAME", "testdb")
 	UsersCollection               = GetEnv("USERS_COLLECTION", "users")
