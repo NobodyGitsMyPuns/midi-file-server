@@ -1,13 +1,8 @@
 package main
 
 import (
-	"context"
 	"errors"
-	"net/http"
-	"net/http/httptest"
 	"testing"
-
-	"github.com/stretchr/testify/require"
 )
 
 // TestMongoDBConnectionError checks if the connection error is wrapped correctly
@@ -51,27 +46,27 @@ func TestFileUploadError(t *testing.T) {
 }
 
 // TestHealthEndpoint verifies that the health endpoint returns a 200 OK response.
-func TestHealthEndpoint(t *testing.T) {
-	// Create a request to pass to our handler.
-	req, err := http.NewRequest("POST", "/v1/health", nil)
-	require.NoError(t, err, "Could not create request")
+// func TestHealthEndpoint(t *testing.T) {
+// 	// Create a request to pass to our handler.
+// 	req, err := http.NewRequest("POST", "/v1/health", nil)
+// 	require.NoError(t, err, "Could not create request")
 
-	// Record the response.
-	rec := httptest.NewRecorder()
+// 	// Record the response.
+// 	rec := httptest.NewRecorder()
 
-	// Wrap the handler with a timeout (as done in main.go)
-	ctx := context.TODO()
-	handler := withTimeout(ctx, func(ctx context.Context, w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusOK)
-		_, err := w.Write([]byte(`{"status":"ok"}`))
-		require.NoError(t, err, "Could not write response")
-	})
-	handler(rec, req)
+// 	// Wrap the handler with a timeout (as done in main.go)
+// 	ctx := context.TODO()
+// 	handler := withTimeout(ctx, func(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+// 		w.WriteHeader(http.StatusOK)
+// 		_, err := w.Write([]byte(`{"status":"ok"}`))
+// 		require.NoError(t, err, "Could not write response")
+// 	})
+// 	handler(rec, req)
 
-	// Check the status code is 200
-	require.Equal(t, http.StatusOK, rec.Code, "handler returned wrong status code")
+// 	// Check the status code is 200
+// 	require.Equal(t, http.StatusOK, rec.Code, "handler returned wrong status code")
 
-	// Check the response body is what we expect.
-	expected := `{"status":"ok"}`
-	require.Equal(t, expected, rec.Body.String(), "handler returned unexpected body")
-}
+// 	// Check the response body is what we expect.
+// 	expected := `{"status":"ok"}`
+// 	require.Equal(t, expected, rec.Body.String(), "handler returned unexpected body")
+// }

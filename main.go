@@ -15,6 +15,7 @@ import (
 	restapi "midi-file-server/rest_api"
 
 	"cloud.google.com/go/storage"
+	"go.mongodb.org/mongo-driver/mongo"
 	"google.golang.org/api/option"
 )
 
@@ -36,10 +37,10 @@ var (
 )
 
 func main() {
-	timedContext, cancel := context.WithTimeout(context.Background(), ContextTimeout)
-	defer cancel()
+	// Use a background context for MongoDB connection to avoid it timing out with HTTP requests
+	backgroundContext := context.Background()
 
-	mongoDB := mongodb.NewMongoDBClient(timedContext)
+	mongoDB := mongodb.NewMongoDBClient(backgroundContext)
 
 	err := WrapError(mongoDB.Connect(), ErrMongoDBConnection)
 	if err != nil {
@@ -51,23 +52,32 @@ func main() {
 	if err != nil {
 		log.Fatalf("Error: %v", err)
 	}
+	db := mongoDB.Client.Database(mongoDB.DatabaseName)
 
 	// Register handlers with the shared context
-	http.HandleFunc(fmt.Sprintf("/%s/%s", VersionEp, HealthEp), withTimeout(timedContext, restapi.OnHealthSubmit))
-	http.HandleFunc(fmt.Sprintf("/%s/%s", VersionEp, GetSignedUrl), withTimeout(timedContext, restapi.GetSignedUrl))
-	http.HandleFunc(fmt.Sprintf("/%s/%s", VersionEp, ListAvailableMidiBuckets), withTimeout(timedContext, restapi.ListBucketHandler))
-	http.HandleFunc(fmt.Sprintf("/%s/%s", VersionEp, RegisterEp), withTimeout(timedContext, restapi.RegisterUser))
-	http.HandleFunc(fmt.Sprintf("/%s/%s", VersionEp, LoginEp), withTimeout(timedContext, restapi.LoginUser))
+	http.HandleFunc(fmt.Sprintf("/%s/%s", VersionEp, HealthEp), withTimeout(restapi.OnHealthSubmit))
+	http.HandleFunc(fmt.Sprintf("/%s/%s", VersionEp, GetSignedUrl), withTimeout(restapi.GetSignedUrl))
+	http.HandleFunc(fmt.Sprintf("/%s/%s", VersionEp, ListAvailableMidiBuckets), withTimeout(restapi.ListBucketHandler))
+	http.HandleFunc(fmt.Sprintf("/%s/%s", VersionEp, RegisterEp), withTimeoutDb(db, restapi.RegisterUser))
+	http.HandleFunc(fmt.Sprintf("/%s/%s", VersionEp, LoginEp), withTimeoutDb(db, restapi.LoginUser))
 
 	log.Fatal(http.ListenAndServe(":8080", nil))
 }
 
-// Modified withTimeout to accept an external context
-func withTimeout(parentCtx context.Context, handler func(context.Context, http.ResponseWriter, *http.Request)) http.HandlerFunc {
+// Use a fresh timeout for each request
+func withTimeout(handler func(context.Context, http.ResponseWriter, *http.Request)) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		timedContext, cancel := context.WithTimeout(parentCtx, ContextTimeout)
+		timedContext, cancel := context.WithTimeout(r.Context(), ContextTimeout)
 		defer cancel()
 		handler(timedContext, w, r)
+	}
+}
+
+func withTimeoutDb(db *mongo.Database, handler func(context.Context, *mongo.Database, http.ResponseWriter, *http.Request)) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		timedContext, cancel := context.WithTimeout(r.Context(), ContextTimeout)
+		defer cancel()
+		handler(timedContext, db, w, r)
 	}
 }
 

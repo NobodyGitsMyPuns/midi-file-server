@@ -46,7 +46,10 @@ func (m *MongoDBClient) Connect() error {
 
 	m.Client = client
 	fmt.Println("Connected to MongoDB!")
-	m.AddDemoData()
+	err = m.AddDemoData()
+	if err != nil {
+		return fmt.Errorf("failed to add demo data: %w", err)
+	}
 	fmt.Println("Added demo data to MongoDB!")
 	return nil
 }
@@ -90,7 +93,7 @@ func (m *MongoDBClient) VerifyDB() error {
 	fmt.Printf("Ensured that the '%s' database and '%s' collection exist.\n", m.DatabaseName, m.UsersCollection)
 	return nil
 }
-func (m *MongoDBClient) AddDemoData() {
+func (m *MongoDBClient) AddDemoData() error {
 	// Get the database instance from the client
 	db := m.Client.Database(m.DatabaseName)
 
@@ -104,6 +107,7 @@ func (m *MongoDBClient) AddDemoData() {
 
 	_, err := db.Collection("valid_otp_serials").InsertMany(m.Context, otpSerials)
 	if err != nil {
-		log.Printf("Failed to insert OTP and Serial Numbers: %v", err)
+		return fmt.Errorf("failed to insert demo data: %w", err)
 	}
+	return nil
 }

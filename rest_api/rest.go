@@ -22,12 +22,11 @@ const (
 )
 
 var (
-	db                *mongo.Database
 	usersCollection   = getEnv("USERS_COLLECTION", "users")
 	defaultBucketName = getEnv("DEFAULT_BUCKET_NAME", "midi_file_storage")
 )
 
-func RegisterUser(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+func RegisterUser(ctx context.Context, db *mongo.Database, w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
 		return
@@ -105,7 +104,7 @@ func OnHealthSubmit(ctx context.Context, w http.ResponseWriter, r *http.Request)
 	}
 }
 
-func LoginUser(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+func LoginUser(ctx context.Context, db *mongo.Database, w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
 		return
