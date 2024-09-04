@@ -2,13 +2,14 @@ package main
 
 import (
 	"errors"
+	"midi-file-server/utilities"
 	"testing"
 )
 
 // TestMongoDBConnectionError checks if the connection error is wrapped correctly
 func TestMongoDBConnectionError(t *testing.T) {
 	err := errors.New("actual connection error")
-	wrappedErr := WrapError(err, ErrMongoDBConnection)
+	wrappedErr := utilities.WrapError(err, ErrMongoDBConnection)
 
 	if !errors.Is(wrappedErr, ErrMongoDBConnection) {
 		t.Errorf("Expected error type %v, but got %v", ErrMongoDBConnection, wrappedErr)
@@ -18,7 +19,7 @@ func TestMongoDBConnectionError(t *testing.T) {
 // TestMongoDBVerifyError checks if the verification error is wrapped correctly
 func TestMongoDBVerifyError(t *testing.T) {
 	err := errors.New("verification error")
-	wrappedErr := WrapError(err, ErrMongoDBVerify)
+	wrappedErr := utilities.WrapError(err, ErrMongoDBVerify)
 
 	if !errors.Is(wrappedErr, ErrMongoDBVerify) {
 		t.Errorf("Expected error type %v, but got %v", ErrMongoDBVerify, wrappedErr)
@@ -28,7 +29,7 @@ func TestMongoDBVerifyError(t *testing.T) {
 // TestGCPStorageError checks if the GCP storage error is wrapped correctly
 func TestGCPStorageError(t *testing.T) {
 	err := errors.New("GCP error")
-	wrappedErr := WrapError(err, ErrGCPStorage)
+	wrappedErr := utilities.WrapError(err, ErrGCPStorage)
 
 	if !errors.Is(wrappedErr, ErrGCPStorage) {
 		t.Errorf("Expected error type %v, but got %v", ErrGCPStorage, wrappedErr)
@@ -38,7 +39,7 @@ func TestGCPStorageError(t *testing.T) {
 // TestFileUploadError checks if the file upload error is wrapped correctly
 func TestFileUploadError(t *testing.T) {
 	err := errors.New("upload error")
-	wrappedErr := WrapError(err, ErrFileUpload)
+	wrappedErr := utilities.WrapError(err, ErrFileUpload)
 
 	if !errors.Is(wrappedErr, ErrFileUpload) {
 		t.Errorf("Expected error type %v, but got %v", ErrFileUpload, wrappedErr)
