@@ -85,6 +85,7 @@ https://nobodygitsmypuns.github.io/midi-file-server/#/paths/~1get-signed-url/pos
     ```bash
     kubectl apply -f .k8/midi-file-server-deployment.yaml
     kubectl apply -f .k8/midi-file-server-service.yaml
+    
     ```
 
 ### Kubernetes Secrets and IAM Configuration
