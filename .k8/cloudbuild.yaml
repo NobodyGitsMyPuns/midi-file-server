@@ -36,5 +36,5 @@ availableSecrets:
 images:
   - 'gcr.io/$PROJECT_ID/midi-file-server'
 
-# enable with: gcloud services enable cloudbuild.googleapis.com
-# trigger build: gcloud builds submit --config cloudbuild.yaml .
+  #enable with gcloud services enable cloudbuild.googleapis.com
+# gcloud builds submit --config cloudbuild.yaml .
