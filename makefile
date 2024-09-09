@@ -119,7 +119,7 @@ redeploy-service: docker-build push-docker deploy-app
 all: clean get build test lint docker-build push-docker deploy-mongo deploy-app 
 	@echo "Deployment complete!"
 
-# Cloud Build Deployment
+# Cloud Build Deployments
 .PHONY: cloudbuild-deploy
 cloudbuild-deploy:
 	@echo "Submitting build to Cloud Build using config from $(K8S_DIR)/cloudbuild.yaml..."
