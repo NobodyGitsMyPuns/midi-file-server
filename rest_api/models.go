@@ -3,8 +3,10 @@ package restapi
 import "go.mongodb.org/mongo-driver/bson/primitive"
 
 type HealthCheckResponse struct {
-	Health string `json:"health"`
+	Health    string `json:"health"`
+	LastBuild string `json:"last_build"`
 }
+
 type User struct {
 	ID              primitive.ObjectID `json:"id,omitempty" bson:"_id,omitempty"`
 	Username        string             `json:"username" bson:"username"`

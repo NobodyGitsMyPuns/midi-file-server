@@ -15,17 +15,54 @@ steps:
       - '-f'
       - './.k8/midi-file-server-deployment.yaml'
     env:
-      - 'CLOUDSDK_COMPUTE_ZONE=us-central1-a'  # Replace with your zone
-      - 'CLOUDSDK_CONTAINER_CLUSTER=midi-cluster'  # Replace with your cluster name
+      - 'CLOUDSDK_COMPUTE_ZONE=us-central1-c'  # Use GKE_ZONE environment variable
+      - 'CLOUDSDK_CONTAINER_CLUSTER=midi-cluster'
 
-  # Optionally, apply MongoDB configs in the .k8 folder
+  - name: 'gcr.io/cloud-builders/kubectl'
+    args:
+      - 'apply'
+      - '-f'
+      - './.k8/midi-file-server-service.yaml'
+    env:
+      - 'CLOUDSDK_COMPUTE_ZONE=us-central1-c'  # Use GKE_ZONE environment variable
+      - 'CLOUDSDK_CONTAINER_CLUSTER=midi-cluster'
+
+  # MongoDB configuration
   - name: 'gcr.io/cloud-builders/kubectl'
     args:
       - 'apply'
       - '-f'
       - './.k8/mongodb-deployment.yaml'
     env:
-      - 'CLOUDSDK_COMPUTE_ZONE=us-central1-a'
+      - 'CLOUDSDK_COMPUTE_ZONE=us-central1-c'  # Use GKE_ZONE environment variable
+      - 'CLOUDSDK_CONTAINER_CLUSTER=midi-cluster'
+
+  - name: 'gcr.io/cloud-builders/kubectl'
+    args:
+      - 'apply'
+      - '-f'
+      - './.k8/mongodb-service.yaml'
+    env:
+      - 'CLOUDSDK_COMPUTE_ZONE=us-central1-c'  # Use GKE_ZONE environment variable
+      - 'CLOUDSDK_CONTAINER_CLUSTER=midi-cluster'
+
+  # MongoDB persistent volume configuration
+  - name: 'gcr.io/cloud-builders/kubectl'
+    args:
+      - 'apply'
+      - '-f'
+      - './.k8/mongodb-pv.yaml'
+    env:
+      - 'CLOUDSDK_COMPUTE_ZONE=us-central1-c'  # Use GKE_ZONE environment variable
+      - 'CLOUDSDK_CONTAINER_CLUSTER=midi-cluster'
+
+  - name: 'gcr.io/cloud-builders/kubectl'
+    args:
+      - 'apply'
+      - '-f'
+      - './.k8/mongodb-pvc.yaml'
+    env:
+      - 'CLOUDSDK_COMPUTE_ZONE=us-central1-c'  # Use GKE_ZONE environment variable
       - 'CLOUDSDK_CONTAINER_CLUSTER=midi-cluster'
 
 availableSecrets:
@@ -35,6 +72,3 @@ availableSecrets:
 
 images:
   - 'gcr.io/$PROJECT_ID/midi-file-server'
-
-  #enable with gcloud services enable cloudbuild.googleapis.com
-# gcloud builds submit --config cloudbuild.yaml .

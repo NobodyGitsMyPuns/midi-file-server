@@ -18,7 +18,7 @@ GOLINT := golangci-lint
 # Define variables from environment
 DOCKER_IMAGE := $(DOCKER_IMAGE)
 MINIKUBE_PROFILE := minikube
-MINIKUBE_IMAGE := midi-file-server:latest
+MINIKUBE_IMAGE := midi-file-server:local
 GKE_CLUSTER_NAME := midi-cluster
 GKE_ZONE := $(GKE_ZONE)
 GKE_PROJECT := $(GKE_PROJECT)
@@ -78,7 +78,7 @@ stop-minikube:
 .PHONY: docker-build-local
 docker-build-local:
 	@echo "Building Docker image for local development..."
-	docker build --build-arg COPY_ENV=true -t $(DOCKER_IMAGE):local .
+	docker build --build-arg COPY_ENV=true -t $(MINIKUBE_IMAGE) .
 
 .PHONY: docker-build
 docker-build:
@@ -90,7 +90,7 @@ docker-build:
 push-docker:
 	@echo "Pushing Docker image to GCP..."
 	docker push $(DOCKER_IMAGE):latest
-	
+
 # Deploy MongoDB
 .PHONY: deploy-mongo
 deploy-mongo:
@@ -160,5 +160,3 @@ create-gcp-secret:
 	gcloud secrets create $(SECRET_NAME) --replication-policy="automatic" --project=$(GCP_PROJECT) || true
 	echo -n $(SECRET_DATA) | gcloud secrets versions add $(SECRET_NAME) --data-file=- --project=$(GCP_PROJECT)
 	@echo "Google Cloud Secret Manager secret created or updated successfully."
-
-

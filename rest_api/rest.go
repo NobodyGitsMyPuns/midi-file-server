@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"os"
 	"time"
 
 	mongodb "midi-file-server/mongo_db"
@@ -75,15 +76,29 @@ func RegisterUser(ctx context.Context, db *mongo.Database, w http.ResponseWriter
 	}
 }
 
+// OnHealthSubmit returns the health status along with the last build information
 func OnHealthSubmit(ctx context.Context, w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		utilities.LogErrorAndRespond(w, ErrMethodNotAllowed.Error(), http.StatusMethodNotAllowed)
 		return
 	}
 
+	// Retrieve the last build information from the environment variable
+	lastBuild := os.Getenv("LAST_BUILD_INFO")
+	if lastBuild == "" {
+		lastBuild = "Unknown"
+	}
+
+	// Create the health check response
+	response := HealthCheckResponse{
+		Health:    "Google Cloud Build!",
+		LastBuild: lastBuild,
+	}
+
+	// Return the health check response
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	if err := json.NewEncoder(w).Encode(HealthCheckResponse{Health: "OK"}); err != nil {
+	if err := json.NewEncoder(w).Encode(response); err != nil {
 		utilities.LogErrorAndRespond(w, utilities.WrapError(err, fmt.Errorf("failed to encode health response")).Error(), http.StatusInternalServerError)
 	}
 }
