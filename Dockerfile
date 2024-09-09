@@ -47,6 +47,6 @@ RUN export $(cat /app/.env | xargs)
 EXPOSE 8080
 
 # Command to run the executable
-CMD ["./main"]
+CMD ["./app/main"]
 
 
