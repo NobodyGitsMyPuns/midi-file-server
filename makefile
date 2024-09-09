@@ -18,7 +18,7 @@ GOLINT := golangci-lint
 # Define variables from environment
 DOCKER_IMAGE := $(DOCKER_IMAGE)
 MINIKUBE_PROFILE := minikube
-MINIKUBE_IMAGE := midi-file-server:latest
+MINIKUBE_IMAGE := midi-file-server:local
 GKE_CLUSTER_NAME := midi-cluster
 GKE_ZONE := $(GKE_ZONE)
 GKE_PROJECT := $(GKE_PROJECT)
@@ -35,11 +35,13 @@ SECRET_NAME := my-service-account-secret
 SECRET_DATA := '{"client_email":"midi-server-admin@gothic-oven-433521-e1.iam.gserviceaccount.com"}'
 GCP_PROJECT := $(GKE_PROJECT)
 
+# Lint
 .PHONY: lint
 lint:
 	@echo "Running linter..."
 	$(GOLINT) run ./...
 
+# Build and Clean
 .PHONY: build
 build:
 	$(GOBUILD) .
@@ -49,8 +51,8 @@ clean:
 	@echo "Cleaning up Kubernetes resources except for database storage..."
 	-kubectl delete -f $(K8S_DIR)/midi-file-server-deployment.yaml --ignore-not-found --wait=false || true
 	-kubectl delete -f $(K8S_DIR)/midi-file-server-service.yaml --ignore-not-found --wait=false || true
-	# Note: Do not delete PV or PVC here to avoid data loss.
 
+# Test
 .PHONY: test
 test:
 	$(CACHECLEAN) && $(GOTEST) -v ./...
@@ -59,6 +61,7 @@ test:
 get:
 	$(GOGET) -v ./...
 
+# Minikube Setup
 .PHONY: start-minikube
 start-minikube:
 	@echo "Starting Minikube..."
@@ -71,16 +74,24 @@ stop-minikube:
 	@echo "Stopping Minikube..."
 	minikube stop --profile=$(MINIKUBE_PROFILE)
 
-.PHONY: build-docker
-build-docker:
-	@echo "Building Docker image..."
-	docker build -t $(DOCKER_IMAGE):latest .
+# Docker Build (Local or Production)
+.PHONY: docker-build-local
+docker-build-local:
+	@echo "Building Docker image for local development..."
+	docker build --build-arg COPY_ENV=true -t $(MINIKUBE_IMAGE) .
 
+.PHONY: docker-build
+docker-build:
+	@echo "Building Docker image for production..."
+	docker build --build-arg COPY_ENV=false -t $(DOCKER_IMAGE):latest .
+
+# Push Docker image to GCP
 .PHONY: push-docker
 push-docker:
 	@echo "Pushing Docker image to GCP..."
 	docker push $(DOCKER_IMAGE):latest
-	
+
+# Deploy MongoDB
 .PHONY: deploy-mongo
 deploy-mongo:
 	@echo "Deploying MongoDB to GCP..."
@@ -90,79 +101,59 @@ deploy-mongo:
 	kubectl apply -f $(K8S_DIR)/mongodb-deployment.yaml 
 	kubectl apply -f $(K8S_DIR)/mongodb-service.yaml 
 
+# Deploy App to GCP (with secret upload and cloud build)
 .PHONY: deploy-app
-deploy-app: create-gcp-secret
+deploy-app: upload-secrets cloudbuild-deploy
 	@echo "Deploying application to GCP..."
 	gcloud container clusters get-credentials $(GKE_CLUSTER_NAME) --zone $(GKE_ZONE) --project $(GKE_PROJECT)
 	kubectl apply -f $(K8S_DIR)/midi-file-server-deployment.yaml
 	kubectl apply -f $(K8S_DIR)/midi-file-server-service.yaml
 
-# Safe redeploy without touching database
+# Redeploy service without touching database
 .PHONY: redeploy-service
-redeploy-service: build-docker push-docker deploy-app
+redeploy-service: docker-build push-docker deploy-app
 	@echo "Service redeployed to GCP without affecting the database!"
 
+# Complete Deployment
 .PHONY: all
-all: clean get build test lint build-docker push-docker deploy-mongo deploy-app 
+all: clean get build test lint docker-build push-docker deploy-mongo deploy-app 
 	@echo "Deployment complete!"
 
-.PHONY: deploy-service
-deploy-service:
-	@echo "Deploying service to Minikube..."
-	sed 's/${LOAD_BALANCER_IP}/$(LOAD_BALANCER_IP)/g' $(K8S_DIR)/midi-file-server-service.yaml | kubectl apply -f -
+# Cloud Build Deployment
+.PHONY: cloudbuild-deploy
+cloudbuild-deploy:
+	@echo "Submitting build to Cloud Build using config from $(K8S_DIR)/cloudbuild.yaml..."
+	gcloud builds submit --config=$(K8S_DIR)/cloudbuild.yaml .
 
-.PHONY: docker-build
-docker-build:
-	docker build -t $(DOCKER_IMAGE) .
-	docker push $(DOCKER_IMAGE)
+# Upload secrets to GCP Secret Manager
+.PHONY: upload-secrets
+upload-secrets:
+	@echo "Uploading secrets to Google Cloud Secret Manager..."
+	-gcloud secrets create my-env-secret --replication-policy="automatic" || true
+	gcloud secrets versions add my-env-secret --data-file=.env
+	@echo "Secrets uploaded successfully."
 
-.PHONY: gke-deploy
-gke-deploy: docker-build create-gcp-secret
-	gcloud container clusters get-credentials $(GKE_CLUSTER_NAME) --zone $(GKE_ZONE) --project $(GKE_PROJECT)
-	kubectl apply -f $(K8S_DIR)/midi-file-server-deployment.yaml
-	sed 's/${LOAD_BALANCER_IP}/$(LOAD_BALANCER_IP)/g' $(K8S_DIR)/midi-file-server-service.yaml | kubectl apply -f -
+# Cloud Build Trigger (if you have a trigger)
+.PHONY: cloudbuild-trigger
+cloudbuild-trigger:
+	@echo "Triggering Cloud Build deployment..."
+	gcloud builds triggers run <TRIGGER_NAME> --branch=main
 
-.PHONY: minikube-deploy
-minikube-deploy:
-	eval $$(minikube docker-env)
-	docker build -t $(MINIKUBE_IMAGE) .
-	sed 's/${LOAD_BALANCER_IP}/$(LOAD_BALANCER_IP)/g' $(K8S_DIR)/midi-file-server-deployment.yaml | kubectl apply -f -
-	sed 's/${LOAD_BALANCER_IP}/$(LOAD_BALANCER_IP)/g' $(K8S_DIR)/midi-file-server-service.yaml | kubectl apply -f -
-
-.PHONY: minikube-clean
-minikube-clean:
-	kubectl delete -f $(K8S_DIR)/midi-file-server-deployment.yaml
-	kubectl delete -f $(K8S_DIR)/midi-file-server-service.yaml
-
+# GKE Clean
 .PHONY: gke-clean
 gke-clean:
 	gcloud container clusters get-credentials $(GKE_CLUSTER_NAME) --zone $(GKE_ZONE) --project $(GKE_PROJECT)
 	kubectl delete -f $(K8S_DIR)/midi-file-server-deployment.yaml
 	kubectl delete -f $(K8S_DIR)/midi-file-server-service.yaml
 
-# New targets for rebuild and deployment
-.PHONY: local-rebuild
-local-rebuild: clean get build test lint minikube-deploy
-	@echo "Local rebuild and deployment to Minikube complete!"
-
-.PHONY: full-rebuild-deploy
-full-rebuild-deploy: clean get build test lint build-docker push-docker deploy-mongo deploy-app
-	@echo "Full rebuild and deployment to GCP complete!"
-
-.PHONY: full-rebuild-deploy-secret
-full-rebuild-deploy-secret: create-secret clean get build test lint build-docker push-docker deploy-mongo deploy-app
-	@echo "Full rebuild and deployment to GCP with secret creation complete!"
-
+# Secret Creation for Kubernetes and GCP Secret Manager
 .PHONY: create-secret
 create-secret:
 	@echo "Creating or updating Kubernetes secret..."
 	kubectl create secret generic gcr-secret --from-file=gothic_key.json=$(GOOGLE_APPLICATION_CREDENTIALS) --dry-run=client -o yaml | kubectl apply -f -
-	@echo "Secret created or updated successfully."
-	@echo "Creating or updating Kubernetes secret..."
 	kubectl create secret generic signer-secret --from-file=signer.json=$(GOOGLE_APPLICATION_CREDENTIALS) --dry-run=client -o yaml | kubectl apply -f -
-	@echo "Secret created or updated successfully."
+	@echo "Secrets created or updated successfully."
 
-# Create Google Cloud Secret Manager Secret
 .PHONY: create-gcp-secret
 create-gcp-secret:
 	@echo "Creating or updating Google Cloud Secret Manager secret..."

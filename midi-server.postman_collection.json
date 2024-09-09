@@ -1,0 +1,155 @@
+{
+	"info": {
+		"_postman_id": "a0fba379-9a0e-439e-9720-edf0897ed215",
+		"name": "midi-server",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "11351271"
+	},
+	"item": [
+		{
+			"name": "health",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"url": {
+					"raw": "http://34.30.244.244/v1/health",
+					"protocol": "http",
+					"host": [
+						"34",
+						"30",
+						"244",
+						"244"
+					],
+					"path": [
+						"v1",
+						"health"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Register New User",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n        \"username\": \"Panda3\",\n        \"password\": \"PandaMan\",\n        \"otp\": \"valid_otp\",\n        \"serialNumber\": \"valid_serial\"\n    }",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http:/35.184.221.113/v1/register",
+					"host": [
+						"http"
+					],
+					"port": "",
+					"path": [
+						"35.184.221.113",
+						"v1",
+						"register"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Login Existing User",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n        \"username\": \"testuser\",\n        \"password\": \"testpassword\"\n    }",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://localhost:8080/v1/login",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "8080",
+					"path": [
+						"v1",
+						"login"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "GetSignedUrl",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n \n       \"objectName\": [\n        \"midi/Requiem_for_a_dream_mansell.mid\",\n         \"midi/hans-zimmer-cornfield-chase-interstellar-soundtrack-20231020043409-nonstop2k.com.mid\"\n    ]\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://34.30.244.244/v1/get-signed-url",
+					"protocol": "http",
+					"host": [
+						"34",
+						"30",
+						"244",
+						"244"
+					],
+					"path": [
+						"v1",
+						"get-signed-url"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "ListFiles",
+			"protocolProfileBehavior": {
+				"disableBodyPruning": true
+			},
+			"request": {
+				"method": "GET",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"bucketName\": \"midi_file_storage\"\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://34.30.244.244/v1/list-available-midi-files",
+					"protocol": "http",
+					"host": [
+						"34",
+						"30",
+						"244",
+						"244"
+					],
+					"path": [
+						"v1",
+						"list-available-midi-files"
+					]
+				}
+			},
+			"response": []
+		}
+	]
+}

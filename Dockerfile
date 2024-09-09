@@ -3,6 +3,7 @@ FROM golang:1.23 as builder
 # Set the environment variables for cross-compilation
 ENV GOOS=linux
 ENV GOARCH=amd64
+ARG COPY_ENV=false
 
 # Set the Current Working Directory inside the container
 WORKDIR /app
@@ -30,10 +31,14 @@ WORKDIR /root/
 # Copy the Pre-built binary file from the previous stage
 COPY --from=builder /app/main .
 
-COPY .env /app/.env
-
-# Load environment variables from .env file
-RUN export $(cat /app/.env | xargs)
+# Conditionally copy the .env file if COPY_ENV is true and .env exists
+ARG COPY_ENV
+RUN if [ "$COPY_ENV" = "true" ] && [ -f .env ]; then \
+    echo "Copying .env file"; \
+    cp .env /app/.env; \
+else \
+    echo "Skipping .env file copy"; \
+fi
 
 
 # Expose port 8080 to the outside world

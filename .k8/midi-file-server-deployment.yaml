@@ -19,8 +19,10 @@ spec:
         ports:
         - containerPort: 8080
         env:
+        - name: LAST_BUILD_INFO
+          value: "gcr.io/gothic-oven-433521-e1/midi-file-server:latest" 
         - name: GOOGLE_APPLICATION_CREDENTIALS
-          value: /var/secrets/signer/signer.json # Ensure this path is correct
+          value: /var/secrets/signer/signer.json
         volumeMounts:
         - name: gcr-secret
           mountPath: /var/secrets/gcr
