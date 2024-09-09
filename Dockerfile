@@ -31,15 +31,14 @@ WORKDIR /root/
 # Copy the Pre-built binary file from the previous stage
 COPY --from=builder /app/main .
 
-# Conditionally copy .env based on the build argument
-# Conditionally copy .env based on the build argument
+# Conditionally copy the .env file if COPY_ENV is true and .env exists
 ARG COPY_ENV
-RUN if [ "$COPY_ENV" = "true" ]; then echo "Copying .env file"; else echo "Skipping .env copy"; fi
-
-
-# Load environment variables from .env file
-RUN export $(cat /app/.env | xargs)
-
+RUN if [ "$COPY_ENV" = "true" ] && [ -f .env ]; then \
+    echo "Copying .env file"; \
+    cp .env /app/.env; \
+else \
+    echo "Skipping .env file copy"; \
+fi
 
 # Expose port 8080 to the outside world
 EXPOSE 8080
