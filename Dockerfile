@@ -19,7 +19,7 @@ COPY . .
 COPY .k8 ./.k8/
 
 # Build the Go app
-RUN go build -o main . && echo "Build successful" || echo "Build failed"
+RUN go build -o main .
 
 # Use a minimal image for running the app
 FROM alpine:latest
@@ -28,18 +28,17 @@ RUN apk --no-cache add ca-certificates
 # Set the Current Working Directory inside the container
 WORKDIR /root/
 
-# Copy the Pre-built binary file from the previous stage
+# Copy the built binary from /app
 COPY --from=builder /app/main .
 
-# Check if the binary exists and has the correct permissions
+# Ensure the binary is executable
 RUN chmod +x ./main
-RUN ls -la /root/ # Debugging check
 
 # Conditionally copy the .env file if COPY_ENV is true and .env exists
 ARG COPY_ENV
-RUN if [ "$COPY_ENV" = "true" ] && [ -f .env ]; then \
+RUN if [ "$COPY_ENV" = "true" ] && [ -f /app/.env ]; then \
     echo "Copying .env file"; \
-    cp .env /app/.env; \
+    cp /app/.env .; \
 else \
     echo "Skipping .env file copy"; \
 fi
