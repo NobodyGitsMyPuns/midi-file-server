@@ -18,8 +18,8 @@ RUN go mod download
 COPY . .
 COPY .k8 ./.k8/
 
-# Build the Go app
-RUN go build -o main .
+# Build the Go app and verify the binary exists
+RUN go build -o main . && ls -la
 
 # Use a minimal image for running the app
 FROM alpine:latest
@@ -28,11 +28,12 @@ RUN apk --no-cache add ca-certificates
 # Set the Current Working Directory inside the container
 WORKDIR /root/
 
-# Copy the built binary from /app
+# Copy the built binary from /app and verify it exists
 COPY --from=builder /app/main .
+RUN ls -la /root/ # Debugging: Check if the main binary exists
 
 # Ensure the binary is executable
-RUN chmod +x ./main
+RUN chmod +x /root/main
 
 # Conditionally copy the .env file if COPY_ENV is true and .env exists
 ARG COPY_ENV
