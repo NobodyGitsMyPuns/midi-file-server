@@ -40,6 +40,7 @@ else \
     echo "Skipping .env file copy"; \
 fi
 
+
 # Expose port 8080 to the outside world
 EXPOSE 8080
 
