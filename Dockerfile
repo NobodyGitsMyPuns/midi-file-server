@@ -26,14 +26,13 @@ FROM alpine:latest
 RUN apk --no-cache add ca-certificates
 
 # Set the Current Working Directory inside the container
-WORKDIR /root/
+WORKDIR /app/
 
-# Copy the built binary from /app and verify it exists
-COPY --from=builder /app/main .
-RUN ls -la /root/ # Debugging: Check if the main binary exists
+# Copy the built binary from /app in the builder stage
+COPY --from=builder /app/main /app/
 
 # Ensure the binary is executable
-RUN chmod +x /root/main
+RUN chmod +x /app/main
 
 # Conditionally copy the .env file if COPY_ENV is true and .env exists
 ARG COPY_ENV
@@ -47,5 +46,5 @@ fi
 # Expose port 8080 to the outside world
 EXPOSE 8080
 
-# Command to run the executable
-CMD ["./main"]
+# Command to run the executable from /app
+CMD ["/app/main"]
