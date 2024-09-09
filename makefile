@@ -92,6 +92,8 @@ deploy-mongo:
 
 .PHONY: deploy-app
 deploy-app: create-gcp-secret
+	@echo "Uploading ENV to Gsecrets..."
+	deploy: upload-secrets cloudbuild-deploy
 	@echo "Deploying application to GCP..."
 	gcloud container clusters get-credentials $(GKE_CLUSTER_NAME) --zone $(GKE_ZONE) --project $(GKE_PROJECT)
 	kubectl apply -f $(K8S_DIR)/midi-file-server-deployment.yaml
@@ -169,3 +171,23 @@ create-gcp-secret:
 	gcloud secrets create $(SECRET_NAME) --replication-policy="automatic" --project=$(GCP_PROJECT) || true
 	echo -n $(SECRET_DATA) | gcloud secrets versions add $(SECRET_NAME) --data-file=- --project=$(GCP_PROJECT)
 	@echo "Google Cloud Secret Manager secret created or updated successfully."
+
+.PHONY: cloudbuild-deploy
+cloudbuild-deploy:
+	@echo "Submitting build to Cloud Build using config from $(K8S_DIR)/cloudbuild.yaml..."
+	gcloud builds submit --config=$(K8S_DIR)/cloudbuild.yaml .
+
+.PHONY: cloudbuild-trigger
+cloudbuild-trigger:
+	@echo "Triggering Cloud Build deployment..."
+	gcloud builds triggers run <TRIGGER_NAME> --branch=main
+
+.PHONY: upload-secrets
+upload-secrets:
+	@echo "Uploading secrets to Google Cloud Secret Manager..."
+	-gcloud secrets create my-env-secret --replication-policy="automatic" || true
+	gcloud secrets versions add my-env-secret --data-file=.env
+	@echo "Secrets uploaded successfully."
+# had to enable triggers "enable cloudbuild api"
+#https://cloud.google.com/build/docs/automating-builds/create-manage-triggers
+#https://console.cloud.google.com/cloud-build/triggers?project=gothic-oven-433521-e1
