@@ -89,6 +89,9 @@ func OnHealthSubmit(ctx context.Context, w http.ResponseWriter, r *http.Request)
 		lastBuild = "Unknown"
 	}
 
+	// Log the retrieved last build info for debugging
+	log.Info().Msgf("LAST_BUILD_INFO: %s", lastBuild)
+
 	// Create the health check response
 	response := HealthCheckResponse{
 		Health:    "Google Cloud Build!",
