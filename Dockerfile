@@ -1,6 +1,6 @@
 FROM golang:1.23 as builder
 
-# Set the environment variables for cross-compilation
+# Set environment variables for cross-compilation
 ENV GOOS=linux
 ENV GOARCH=amd64
 
@@ -10,34 +10,31 @@ WORKDIR /app
 # Copy go.mod and go.sum files
 COPY go.mod go.sum ./
 
-# Download all dependencies. Dependencies will be cached if the go.mod and go.sum files are not changed
+# Download all dependencies
 RUN go mod download
 
-# Copy the source code and k8s directory into the container
+# Copy the source code into the container
 COPY . .
-COPY .k8 ./.k8/
 
-# Build the Go app
-RUN go build -o main .
+# Build the Go app and verify the binary exists
+RUN go build -o /app/main . && ls -la /app
 
 # Use a minimal image for running the app
 FROM alpine:latest
 RUN apk --no-cache add ca-certificates
 
-# Set the Current Working Directory inside the container
-WORKDIR /root/
+# Set the working directory to /app
+WORKDIR /app
 
-# Copy the Pre-built binary file from the previous stage
-COPY --from=builder /app/main .
+# Copy the built binary from the builder stage into /app
+COPY --from=builder /app/main /app/main
 
-COPY .env /app/.env
+# Ensure the binary is executable and verify it exists
+RUN chmod +x /app/main && ls -la /app/main
 
-# Load environment variables from .env file
-RUN export $(cat /app/.env | xargs)
-
-
+#COPY .env /app/.env
 # Expose port 8080 to the outside world
 EXPOSE 8080
 
 # Command to run the executable
-CMD ["./main"]
+CMD ["/app/main"]
