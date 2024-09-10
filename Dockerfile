@@ -27,7 +27,7 @@ RUN apk --no-cache add ca-certificates
 WORKDIR /app
 
 # Copy the compiled binary from the builder stage
-COPY --from=builder /app/main /app/main
+COPY --from=builder /app/main .
 
 # Ensure the binary has execute permissions (just in case)
 RUN chmod +x /app/main
