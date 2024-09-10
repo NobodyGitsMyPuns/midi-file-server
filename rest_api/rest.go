@@ -76,35 +76,37 @@ func RegisterUser(ctx context.Context, db *mongo.Database, w http.ResponseWriter
 	}
 }
 
-// OnHealthSubmit returns the health status along with the last build information
-func OnHealthSubmit(ctx context.Context, w http.ResponseWriter, r *http.Request) {
-	log.Debug().Msg("Received health check request")
-	if r.Method != http.MethodPost {
-		utilities.LogErrorAndRespond(w, ErrMethodNotAllowed.Error(), http.StatusMethodNotAllowed)
-		return
-	}
+package main
 
-	// Retrieve the last build image from the environment variable
+import (
+	"encoding/json"
+	"fmt"
+	"net/http"
+	"os"
+
+	"github.com/rs/zerolog/log"
+)
+
+// OnHealthSubmit returns the health status along with the last build information
+func OnHealthSubmit(w http.ResponseWriter, r *http.Request) {
+	log.Debug().Msg("Received health check request")
+
+	// Retrieve the last build information from the environment variable
 	lastBuild := os.Getenv("LAST_BUILD_INFO")
-	log.Debug().Msgf("LAST_BUILD_INFO: %s", lastBuild)
 	if lastBuild == "" {
 		lastBuild = "Unknown"
 	}
 
-	// Retrieve the image digest if available
-	imageDigest := os.Getenv("IMAGE_DIGEST")
-	log.Debug().Msgf("IMAGE_DIGEST: %s", imageDigest)
-	if imageDigest == "" {
-		imageDigest = "Unavailable"
+	// Retrieve the digest from the environment variable
+	digest := os.Getenv("DIGEST")
+	if digest == "" {
+		digest = "Digest: Unavailable"
 	}
 
-	// Log the retrieved last build info for debugging
-	log.Info().Msgf("LAST_BUILD_INFO: %s, IMAGE_DIGEST: %s", lastBuild, imageDigest)
-
 	// Create the health check response
-	response := HealthCheckResponse{
-		Health:    "Google Cloud Build!",
-		LastBuild: fmt.Sprintf("%s (Digest: %s)", lastBuild, imageDigest),
+	response := map[string]string{
+		"health":     "Google Cloud Build!",
+		"last_build": fmt.Sprintf("%s (Digest: %s)", lastBuild, digest),
 	}
 
 	// Return the health check response
@@ -112,7 +114,6 @@ func OnHealthSubmit(ctx context.Context, w http.ResponseWriter, r *http.Request)
 	w.WriteHeader(http.StatusOK)
 	if err := json.NewEncoder(w).Encode(response); err != nil {
 		log.Debug().Err(err).Msg("Failed to encode health response")
-		utilities.LogErrorAndRespond(w, utilities.WrapError(err, fmt.Errorf("failed to encode health response")).Error(), http.StatusInternalServerError)
 	}
 }
 
