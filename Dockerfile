@@ -37,4 +37,4 @@ RUN ls -la /root && chmod +x /root/main
 EXPOSE 8080
 
 # Command to run the executable
-CMD ["/root/main"]
+CMD ["/app/main"]
