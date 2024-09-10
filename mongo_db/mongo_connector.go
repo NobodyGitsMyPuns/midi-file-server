@@ -65,7 +65,7 @@ func (m *MongoDBClient) Disconnect() {
 	}
 }
 
-// VerifyDB checks if the necessary collections exist in the database
+// VerifyDB  checks if the necessary collections exist in the database
 func (m *MongoDBClient) VerifyDB() error {
 	database := m.Client.Database(m.DatabaseName)
 	collectionNames, err := database.ListCollectionNames(m.Context, bson.D{{Key: "name", Value: m.UsersCollection}})
