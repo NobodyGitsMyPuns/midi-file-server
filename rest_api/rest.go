@@ -76,17 +76,6 @@ func RegisterUser(ctx context.Context, db *mongo.Database, w http.ResponseWriter
 	}
 }
 
-package main
-
-import (
-	"encoding/json"
-	"fmt"
-	"net/http"
-	"os"
-
-	"github.com/rs/zerolog/log"
-)
-
 // OnHealthSubmit returns the health status along with the last build information
 func OnHealthSubmit(w http.ResponseWriter, r *http.Request) {
 	log.Debug().Msg("Received health check request")
