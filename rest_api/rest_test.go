@@ -26,7 +26,7 @@ func TestOnHealthSubmit_Success(t *testing.T) {
 	var response HealthCheckResponse
 	_ = json.NewDecoder(resp.Body).Decode(&response)
 
-	assert.Equal(t, "OK", response.Health)
+	assert.Equal(t, "Google Cloud Build!", response.Health)
 }
 
 func TestOnHealthSubmit_MethodNotAllowed(t *testing.T) {
