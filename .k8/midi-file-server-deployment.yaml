@@ -16,6 +16,7 @@ spec:
       containers:
       - name: midi-file-server
         image: gcr.io/gothic-oven-433521-e1/midi-file-server:latest
+        imagePullPolicy: Always
         ports:
         - containerPort: 8080
         env:

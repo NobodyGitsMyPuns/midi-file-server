@@ -112,8 +112,7 @@ deploy-app: upload-secrets cloudbuild-deploy
 # Redeploy service without touching database
 .PHONY: redeploy-service
 redeploy-service: docker-build push-docker deploy-app
-	@echo "Service redeployed to GCP without affecting the database!"
-
+	@echo "Service redeployed to GCP without affecting the database!"redeplo
 # Complete Deployment
 .PHONY: all
 all: clean get build test lint docker-build push-docker deploy-mongo deploy-app 
@@ -132,6 +131,7 @@ upload-secrets:
 	-gcloud secrets create my-env-secret --replication-policy="automatic" || true
 	gcloud secrets versions add my-env-secret --data-file=.env
 	@echo "Secrets uploaded successfully."
+
 
 # Cloud Build Trigger (if you have a trigger)
 .PHONY: cloudbuild-trigger
