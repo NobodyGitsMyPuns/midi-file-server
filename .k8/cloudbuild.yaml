@@ -85,4 +85,4 @@ images:
   - 'gcr.io/$PROJECT_ID/midi-file-server:$SHORT_SHA'
 
 substitutions:
-  _SHORT_SHA: "$SHORT_SHA
+  _SHORT_SHA: "$SHORT_SHA"
