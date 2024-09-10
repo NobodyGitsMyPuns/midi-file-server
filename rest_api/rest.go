@@ -78,6 +78,7 @@ func RegisterUser(ctx context.Context, db *mongo.Database, w http.ResponseWriter
 
 // OnHealthSubmit returns the health status along with the last build information
 func OnHealthSubmit(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+	log.Debug().Msg("Received health check request")
 	if r.Method != http.MethodPost {
 		utilities.LogErrorAndRespond(w, ErrMethodNotAllowed.Error(), http.StatusMethodNotAllowed)
 		return
@@ -85,6 +86,7 @@ func OnHealthSubmit(ctx context.Context, w http.ResponseWriter, r *http.Request)
 
 	// Retrieve the last build information from the environment variable
 	lastBuild := os.Getenv("LAST_BUILD_INFO")
+	log.Debug().Msgf("LAST_BUILD_INFO: %s", lastBuild)
 	if lastBuild == "" {
 		lastBuild = "Unknown"
 	}
@@ -102,6 +104,7 @@ func OnHealthSubmit(ctx context.Context, w http.ResponseWriter, r *http.Request)
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	if err := json.NewEncoder(w).Encode(response); err != nil {
+		log.Debug().Err(err).Msg("Failed to encode health response")
 		utilities.LogErrorAndRespond(w, utilities.WrapError(err, fmt.Errorf("failed to encode health response")).Error(), http.StatusInternalServerError)
 	}
 }
