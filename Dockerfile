@@ -20,15 +20,9 @@ WORKDIR /rootapp
 COPY . .
 COPY .k8 ./.k8/
 
-# Build the Go app and list contents of /app to verify
-RUN go build -o main . && ls -la /app && chmod +x /app/main
-
 # Use a minimal image for running the app
 FROM alpine:latest
 RUN apk --no-cache add ca-certificates
-
-
-
 
 # Build the Go application
 RUN go build -o main .
