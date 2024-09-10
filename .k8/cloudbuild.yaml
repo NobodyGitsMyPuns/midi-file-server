@@ -2,14 +2,14 @@ options:
   logging: CLOUD_LOGGING_ONLY  # or NONE if you want no logging
 
 steps:
-  # Step 1: Build the Docker image, using secret for build
+  # Step 1: Build the Docker image, using secret for build with a unique tag (commit SHA)
   - name: 'gcr.io/cloud-builders/docker'
-    args: ['build', '-t', 'gcr.io/$PROJECT_ID/midi-file-server', '.']
+    args: ['build', '-t', 'gcr.io/$PROJECT_ID/midi-file-server:$SHORT_SHA', '.']
     secretEnv: ['MY_SECRET_ENV']
 
   # Step 2: Push the Docker image to Google Container Registry (GCR)
   - name: 'gcr.io/cloud-builders/docker'
-    args: ['push', 'gcr.io/$PROJECT_ID/midi-file-server']
+    args: ['push', 'gcr.io/$PROJECT_ID/midi-file-server:$SHORT_SHA']
 
   # Step 3: Deploy to Kubernetes using the .k8 folder YAML configurations
   - name: 'gcr.io/cloud-builders/kubectl'
@@ -28,6 +28,17 @@ steps:
       - './.k8/midi-file-server-service.yaml'
     env:
       - 'CLOUDSDK_COMPUTE_ZONE=us-central1-c'  # Use GKE_ZONE environment variable
+      - 'CLOUDSDK_CONTAINER_CLUSTER=midi-cluster'
+
+  # Step 4: Force Kubernetes to pull the latest image by patching the deployment with the new tag
+  - name: 'gcr.io/cloud-builders/kubectl'
+    args:
+      - 'set'
+      - 'image'
+      - 'deployment/midi-file-server-deployment'
+      - 'midi-file-server=gcr.io/$PROJECT_ID/midi-file-server:$SHORT_SHA'
+    env:
+      - 'CLOUDSDK_COMPUTE_ZONE=us-central1-c'
       - 'CLOUDSDK_CONTAINER_CLUSTER=midi-cluster'
 
   # MongoDB configuration
@@ -74,4 +85,7 @@ availableSecrets:
       env: 'MY_SECRET_ENV'
 
 images:
-  - 'gcr.io/$PROJECT_ID/midi-file-server'
+  - 'gcr.io/$PROJECT_ID/midi-file-server:$SHORT_SHA'
+
+substitutions:
+  _SHORT_SHA: "$SHORT_SHA"
