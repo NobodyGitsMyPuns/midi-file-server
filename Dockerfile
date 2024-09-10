@@ -32,7 +32,7 @@ COPY --from=builder /app/main /app/main
 # Ensure the binary is executable and verify it exists
 RUN chmod +x /app/main && ls -la /app/main
 
-COPY .env /app/.env
+#COPY .env /app/.env
 # Expose port 8080 to the outside world
 EXPOSE 8080
 
