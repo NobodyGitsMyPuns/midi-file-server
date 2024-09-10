@@ -10,17 +10,8 @@ steps:
   # Step 2: Push the Docker image to Google Container Registry (GCR)
   - name: 'gcr.io/cloud-builders/docker'
     args: ['push', 'gcr.io/$PROJECT_ID/midi-file-server:$SHORT_SHA']
-  # Step 3: Extract the digest and save it in an environment variable
-  - name: 'gcr.io/cloud-builders/gcloud'
-    id: 'digest'
-    entrypoint: '/bin/sh'
-    args:
-      - '-c'
-      - |
-        IMAGE_DIGEST=$(gcloud container images describe gcr.io/$PROJECT_ID/midi-file-server:$SHORT_SHA --format='get(image_summary.digest)')
-        echo $IMAGE_DIGEST > /workspace/image_digest.txt
 
-  # Step 4: Deploy to Kubernetes using the .k8 folder YAML configurations
+  # Step 3: Deploy to Kubernetes using the .k8 folder YAML configurations
   - name: 'gcr.io/cloud-builders/kubectl'
     args:
       - 'apply'
@@ -39,7 +30,7 @@ steps:
       - 'CLOUDSDK_COMPUTE_ZONE=us-central1-c'  
       - 'CLOUDSDK_CONTAINER_CLUSTER=midi-cluster'
 
-  # Step 5: Force Kubernetes to pull the latest image by patching the deployment with the new tag
+  # Step 4: Force Kubernetes to pull the latest image by patching the deployment with the new tag
   - name: 'gcr.io/cloud-builders/kubectl'
     args:
       - 'set'
@@ -50,7 +41,7 @@ steps:
       - 'CLOUDSDK_COMPUTE_ZONE=us-central1-c'
       - 'CLOUDSDK_CONTAINER_CLUSTER=midi-cluster'
 
-  # step 6: MongoDB configuration
+  # MongoDB configuration
   - name: 'gcr.io/cloud-builders/kubectl'
     args:
       - 'apply'
@@ -69,7 +60,7 @@ steps:
       - 'CLOUDSDK_COMPUTE_ZONE=us-central1-c'  
       - 'CLOUDSDK_CONTAINER_CLUSTER=midi-cluster'
 
-  # step 7:MongoDB persistent volume configuration
+  # MongoDB persistent volume configuration
   - name: 'gcr.io/cloud-builders/kubectl'
     args:
       - 'apply'
