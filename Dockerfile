@@ -33,8 +33,9 @@ COPY --from=builder /app/main .
 # List the contents of the /root directory to verify
 RUN ls -la /root && chmod +x /root/main
 
-# Expose port 8080 
+# Expose port 8080 to the outside world
 EXPOSE 8080
 
-# Command to run the executable 
+# Command to run the executable
+CMD ["/app/main"]
 
