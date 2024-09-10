@@ -30,14 +30,11 @@ WORKDIR /root/
 # Copy the Pre-built binary file from the previous stage
 COPY --from=builder /app/main .
 
-#COPY .env /app/.env
-
-# Load environment variables from .env file
-#RUN export $(cat /app/.env | xargs)
-
+# Ensure the binary is executable
+RUN chmod +x /root/main
 
 # Expose port 8080 to the outside world
 EXPOSE 8080
 
 # Command to run the executable
-CMD ["./main"]
+CMD ["/root/main"]
