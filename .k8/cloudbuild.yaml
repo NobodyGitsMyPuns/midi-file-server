@@ -2,7 +2,7 @@ options:
   logging: CLOUD_LOGGING_ONLY  # or NONE if you want no logging
 
 steps:
-  # Step 1: Build the Docker image, using secret for build with a unique tag (commit SHA)
+  # Step 1: Build the Docker image with the unique tag (commit SHA)
   - name: 'gcr.io/cloud-builders/docker'
     args: ['build', '-t', 'gcr.io/$PROJECT_ID/midi-file-server:$SHORT_SHA', '.']
     secretEnv: ['MY_SECRET_ENV']
@@ -11,14 +11,22 @@ steps:
   - name: 'gcr.io/cloud-builders/docker'
     args: ['push', 'gcr.io/$PROJECT_ID/midi-file-server:$SHORT_SHA']
 
-  # Step 3: Deploy to Kubernetes using the .k8 folder YAML configurations
+  # Step 3: Replace the image tag in the deployment YAML file
+  - name: 'gcr.io/cloud-builders/gcloud'
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - |
+        sed -i 's|image: gcr.io/.*/midi-file-server:.*|image: gcr.io/$PROJECT_ID/midi-file-server:$SHORT_SHA|' ./.k8/midi-file-server-deployment.yaml
+
+  # Step 4: Deploy to Kubernetes using the updated YAML configurations
   - name: 'gcr.io/cloud-builders/kubectl'
     args:
       - 'apply'
       - '-f'
       - './.k8/midi-file-server-deployment.yaml'
     env:
-      - 'CLOUDSDK_COMPUTE_ZONE=us-central1-c'  # Use GKE_ZONE environment variable
+      - 'CLOUDSDK_COMPUTE_ZONE=us-central1-c'
       - 'CLOUDSDK_CONTAINER_CLUSTER=midi-cluster'
 
   - name: 'gcr.io/cloud-builders/kubectl'
@@ -26,17 +34,6 @@ steps:
       - 'apply'
       - '-f'
       - './.k8/midi-file-server-service.yaml'
-    env:
-      - 'CLOUDSDK_COMPUTE_ZONE=us-central1-c'  # Use GKE_ZONE environment variable
-      - 'CLOUDSDK_CONTAINER_CLUSTER=midi-cluster'
-
-  # Step 4: Force Kubernetes to pull the latest image by patching the deployment with the new tag
-  - name: 'gcr.io/cloud-builders/kubectl'
-    args:
-      - 'set'
-      - 'image'
-      - 'deployment/midi-file-server-deployment'
-      - 'midi-file-server=gcr.io/$PROJECT_ID/midi-file-server:$SHORT_SHA'
     env:
       - 'CLOUDSDK_COMPUTE_ZONE=us-central1-c'
       - 'CLOUDSDK_CONTAINER_CLUSTER=midi-cluster'
@@ -48,7 +45,7 @@ steps:
       - '-f'
       - './.k8/mongodb-deployment.yaml'
     env:
-      - 'CLOUDSDK_COMPUTE_ZONE=us-central1-c'  
+      - 'CLOUDSDK_COMPUTE_ZONE=us-central1-c'
       - 'CLOUDSDK_CONTAINER_CLUSTER=midi-cluster'
 
   - name: 'gcr.io/cloud-builders/kubectl'
@@ -57,7 +54,7 @@ steps:
       - '-f'
       - './.k8/mongodb-service.yaml'
     env:
-      - 'CLOUDSDK_COMPUTE_ZONE=us-central1-c'  # Use GKE_ZONE environment variable
+      - 'CLOUDSDK_COMPUTE_ZONE=us-central1-c'
       - 'CLOUDSDK_CONTAINER_CLUSTER=midi-cluster'
 
   # MongoDB persistent volume configuration
@@ -67,7 +64,7 @@ steps:
       - '-f'
       - './.k8/mongodb-pv.yaml'
     env:
-      - 'CLOUDSDK_COMPUTE_ZONE=us-central1-c'  # Use GKE_ZONE environment variable
+      - 'CLOUDSDK_COMPUTE_ZONE=us-central1-c'
       - 'CLOUDSDK_CONTAINER_CLUSTER=midi-cluster'
 
   - name: 'gcr.io/cloud-builders/kubectl'
@@ -76,7 +73,7 @@ steps:
       - '-f'
       - './.k8/mongodb-pvc.yaml'
     env:
-      - 'CLOUDSDK_COMPUTE_ZONE=us-central1-c'  # Use GKE_ZONE environment variable
+      - 'CLOUDSDK_COMPUTE_ZONE=us-central1-c'
       - 'CLOUDSDK_CONTAINER_CLUSTER=midi-cluster'
 
 availableSecrets:
@@ -88,4 +85,4 @@ images:
   - 'gcr.io/$PROJECT_ID/midi-file-server:$SHORT_SHA'
 
 substitutions:
-  _SHORT_SHA: "$SHORT_SHA"
+  _SHORT_SHA: "$SHORT_SHA
