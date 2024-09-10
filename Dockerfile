@@ -33,7 +33,7 @@ COPY --from=builder /app/main .
 #COPY .env /app/.env
 
 # Load environment variables from .env file
-RUN export $(cat /app/.env | xargs)
+#RUN export $(cat /app/.env | xargs)
 
 
 # Expose port 8080 to the outside world
