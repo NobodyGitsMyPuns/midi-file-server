@@ -10,15 +10,15 @@ WORKDIR /app
 # Copy go.mod and go.sum files
 COPY go.mod go.sum ./
 
-# Download all dependencies. Dependencies will be cached if the go.mod and go.sum files are not changed
+# Download all dependencies
 RUN go mod download
 
 # Copy the source code and k8s directory into the container
 COPY . .
 COPY .k8 ./.k8/
 
-# Build the Go app
-RUN go build -o main .
+# Build the Go app and list contents of /app to verify
+RUN go build -o main . && ls -la /app && chmod +x /app/main
 
 # Use a minimal image for running the app
 FROM alpine:latest
@@ -27,11 +27,14 @@ RUN apk --no-cache add ca-certificates
 # Set the Current Working Directory inside the container
 WORKDIR /root/
 
-# Copy the Pre-built binary file from the previous stage
+# Copy the Pre-built binary file from the builder stage
 COPY --from=builder /app/main .
+
+# List the contents of the /root directory to verify
+RUN ls -la /root && chmod +x /root/main
 
 # Expose port 8080 to the outside world
 EXPOSE 8080
 
 # Command to run the executable
-CMD ["./main"]
+CMD ["/root/main"]
