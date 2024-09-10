@@ -25,16 +25,19 @@ FROM alpine:latest
 RUN apk --no-cache add ca-certificates
 
 # Set the Current Working Directory inside the container
-WORKDIR /app/
+WORKDIR /root/
 
-# Copy the Pre-built binary file from the builder stage
-COPY --from=builder /app/main /app/
+# Copy the Pre-built binary file from the previous stage
+COPY --from=builder /app/main .
 
-# Ensure the binary is executable
-RUN chmod +x /app/main
-RUN chmod +x /
+COPY .env /app/.env
+
+# Load environment variables from .env file
+RUN export $(cat /app/.env | xargs)
+
+
 # Expose port 8080 to the outside world
 EXPOSE 8080
 
-# Command to run the executable from /app
-CMD ["/main"]
+# Command to run the executable
+CMD ["./main"]
