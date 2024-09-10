@@ -84,20 +84,27 @@ func OnHealthSubmit(ctx context.Context, w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	// Retrieve the last build information from the environment variable
+	// Retrieve the last build image from the environment variable
 	lastBuild := os.Getenv("LAST_BUILD_INFO")
 	log.Debug().Msgf("LAST_BUILD_INFO: %s", lastBuild)
 	if lastBuild == "" {
 		lastBuild = "Unknown"
 	}
 
+	// Retrieve the image digest if available
+	imageDigest := os.Getenv("IMAGE_DIGEST")
+	log.Debug().Msgf("IMAGE_DIGEST: %s", imageDigest)
+	if imageDigest == "" {
+		imageDigest = "Unavailable"
+	}
+
 	// Log the retrieved last build info for debugging
-	log.Info().Msgf("LAST_BUILD_INFO: %s", lastBuild)
+	log.Info().Msgf("LAST_BUILD_INFO: %s, IMAGE_DIGEST: %s", lastBuild, imageDigest)
 
 	// Create the health check response
 	response := HealthCheckResponse{
 		Health:    "Google Cloud Build!",
-		LastBuild: lastBuild,
+		LastBuild: fmt.Sprintf("%s (Digest: %s)", lastBuild, imageDigest),
 	}
 
 	// Return the health check response
