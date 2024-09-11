@@ -38,7 +38,7 @@ func main() {
 	// Initialize zerolog to use human-readable output in the console
 	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr})
 
-	// Use a background context for MongoDB connection to avoid it timing out with HTTP requests
+	// Use a background context for MongoDB connection to avoid it timing out with HTTP requests,
 	backgroundContext := context.Background()
 
 	mongoDB := mongodb.NewMongoDBClient(backgroundContext)
