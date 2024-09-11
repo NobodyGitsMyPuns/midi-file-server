@@ -16,6 +16,13 @@ spec:
       containers:
       - name: midi-file-server
         image: gcr.io/gothic-oven-433521-e1/midi-file-server:latest
+        resources:
+          limits:
+            cpu: "2" # max is 48 for the c5.12xlarge instance type
+            memory: 4Gi # max is 96Gi for the c5.12xlarge instance type
+          requests:
+            cpu: "2"
+            memory: 500Mi
         imagePullPolicy: Always
         ports:
         - containerPort: 8080
@@ -24,13 +31,6 @@ spec:
           value: "gcr.io/gothic-oven-433521-e1/midi-file-server:latest" 
         - name: GOOGLE_APPLICATION_CREDENTIALS
           value: /var/secrets/signer/signer.json
-        resources:
-          limits:
-            cpu: "1"
-            memory: "512Mi"
-          requests:
-            cpu: "100m"
-            memory: "256Mi"
         volumeMounts:
         - name: gcr-secret
           mountPath: /var/secrets/gcr
