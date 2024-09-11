@@ -17,10 +17,10 @@ spec:
         image: mongo:4.4
         resources:
           limits:
-            cpu: "2" # max is 48 for the c5.12xlarge instance type
-            memory: 4Gi # max is 96Gi for the c5.12xlarge instance type
+            cpu: "500m" # max is 48 for the c5.12xlarge instance type
+            memory: 2Gi # max is 96Gi for the c5.12xlarge instance type
           requests:
-            cpu: "1"
+            cpu: "500m"
             memory: 250Mi
         ports:
         - containerPort: 27017
