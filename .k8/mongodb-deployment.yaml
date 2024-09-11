@@ -20,8 +20,8 @@ spec:
             cpu: "2" # max is 48 for the c5.12xlarge instance type
             memory: 4Gi # max is 96Gi for the c5.12xlarge instance type
           requests:
-            cpu: "2"
-            memory: 500Mi
+            cpu: "1"
+            memory: 250Mi
         ports:
         - containerPort: 27017
         volumeMounts:
