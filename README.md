@@ -143,6 +143,7 @@ https://nobodygitsmypuns.github.io/midi-file-server/#/paths/~1get-signed-url/pos
 2. **Run the server**:
     ```bash
     go run main.go
+    
     ```
 
 ### Linting and Testing!
