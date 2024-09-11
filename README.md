@@ -145,7 +145,7 @@ https://nobodygitsmypuns.github.io/midi-file-server/#/paths/~1get-signed-url/pos
     go run main.go
     ```
 
-### Linting and Testing
+### Linting and Testing!
 
 - **Run Linter**:
     ```bash
